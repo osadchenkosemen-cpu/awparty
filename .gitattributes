@@ -1,0 +1,14 @@
+# Нормализуем переводы строк: в репозитории — LF, в рабочей копии — как в ОС.
+* text=auto
+*.js   text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+
+# Бинарные ассеты не трогаем.
+*.png  binary
+*.jpg  binary
+*.wav  binary
+*.mp3  binary
+*.ttf  binary
+*.ico  binary

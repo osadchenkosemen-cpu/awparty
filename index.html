@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AwParty</title>
+    <style>
+        @font-face {
+            font-family: 'Orbitron';
+            src: url('AwParty/assets/Orbitron-VariableFont_wght.ttf') format('truetype');
+            font-weight: 100 900;
+            font-display: block;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a0a;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+        }
+        /* Прогрев шрифта, чтобы Phaser-текст сразу рисовался Orbitron */
+        #fontwarm {
+            position: absolute;
+            left: -9999px;
+            font-family: 'Orbitron';
+        }
+        #game {
+            width: 100vw;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="game"></div>
+    <span id="fontwarm">warm</span>
+
+    <!-- Engine -->
+    <script src="phaser.min.js"></script>
+
+    <!-- Game modules (load order matters: plain globals, no bundler).
+         ?v=... — анти-кэш: меняйте число при правках, чтобы браузер брал свежий код. -->
+    <script src="src/constants.js?v=17"></script>
+    <script src="src/utils.js?v=17"></script>
+    <script src="src/save.js?v=17"></script>
+    <script src="src/entities.js?v=17"></script>
+    <script src="src/spawner.js?v=17"></script>
+    <script src="src/hud.js?v=17"></script>
+    <script src="src/shop.js?v=17"></script>
+    <script src="src/audio.js?v=17"></script>
+    <script src="src/scene.js?v=17"></script>
+    <script src="src/main.js?v=17"></script>
+</body>
+</html>
