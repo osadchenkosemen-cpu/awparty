@@ -114,6 +114,7 @@ class MainScene extends Phaser.Scene {
         this.selectedAbilityIndex = -1;
         this.leaderboardFromMenu = false;
         this.leaderboardNewEntryIndex = -1;
+        this.nameInput = ''; // ввод ника на экране NAME_INPUT
         this.levelUpIds = [0, 1, 2];
         this.cheatBuffer = '';
         this.cheatMessage = '';
@@ -630,8 +631,22 @@ class MainScene extends Phaser.Scene {
         this.isGameOver = true;
         this.audio.play('sfx_player_death', { volume: 0.9 });
         this.saveGame();
-        if (this.qualifiesForLeaderboard(this.survivalTimer)) this.tryAddToLeaderboard(this.survivalTimer, '');
-        this.rebuildMenu();
+        // Попал в топ-10 — даём ввести имя; иначе обычный экран Game Over.
+        if (this.qualifiesForLeaderboard(this.survivalTimer)) {
+            this.nameInput = '';
+            this.setState(GameState.NAME_INPUT);
+        } else {
+            this.rebuildMenu();
+        }
+    }
+
+    // Подтвердить ник и показать таблицу рекордов с подсветкой новой записи.
+    _confirmNameInput() {
+        const name = this.nameInput.trim() || 'Anonymous';
+        this.tryAddToLeaderboard(this.survivalTimer, name);
+        this.leaderboardFromMenu = false;
+        this.audio.play('sfx_menu_click');
+        this.setState(GameState.LEADERBOARD);
     }
 
     // Сепарация врагов через сетку (Game::update)
@@ -956,6 +971,7 @@ class MainScene extends Phaser.Scene {
         else if (st === GameState.PAUSED) this._buildPause();
         else if (st === GameState.LEVEL_UP) this._buildLevelUp();
         else if (st === GameState.ABILITY_SELECT) this._buildAbilitySelect();
+        else if (st === GameState.NAME_INPUT) this._buildNameInput();
         else if (st === GameState.PLAYING && this.isGameOver) this._buildGameOver();
     }
 
@@ -1046,6 +1062,21 @@ class MainScene extends Phaser.Scene {
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x1e000a, 220 / 255).setOrigin(0, 0));
         this._mText(W / 2, H / 2, "GAME OVER\nPress 'R' to Restart\nPress 'Q' for Hub", 80, '#ffffff', 0.5, 0.5, '#000', 3);
         this._mText(W / 2, H / 2 + 220, 'L  -  View Records', 32, '#00ffc8', 0.5, 0);
+    }
+
+    _buildNameInput() {
+        const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
+        this._mAdd(this.add.rectangle(0, 0, W, H, 0x0a001e, 230 / 255).setOrigin(0, 0));
+        this._mText(W / 2, H * 0.22, 'NEW RECORD!', 110, '#ffd700', 0.5, 0.5, '#b40050', 5);
+        this._mText(W / 2, H * 0.36, 'Time Survived:  ' + formatTime(this.survivalTimer), 46, '#00ffc8', 0.5, 0.5, '#000', 3);
+        this._mText(W / 2, H * 0.48, 'Enter your name:', 38, '#dcd7eb', 0.5, 0.5, '#000', 2);
+
+        // Поле ввода + текст с курсором-подчёркиванием.
+        const boxW = 760, boxH = 96, boxY = H * 0.58;
+        this._mAdd(this.add.rectangle(W / 2, boxY, boxW, boxH, 0x140028, 1).setOrigin(0.5, 0.5).setStrokeStyle(3, 0x9600ff));
+        this._mText(W / 2, boxY, this.nameInput + '_', 50, '#ffffff', 0.5, 0.5, '#000', 2);
+
+        this._mText(W / 2, H * 0.74, 'ENTER  -  Confirm        BACKSPACE  -  Erase', 30, '#7d78a0', 0.5, 0.5, '#000', 2);
     }
 
     _buildLevelUp() {
@@ -1309,6 +1340,13 @@ class MainScene extends Phaser.Scene {
             }
         } else if (st === GameState.LEADERBOARD) {
             if (esc || code === 'Enter') this.setState(this.leaderboardFromMenu ? GameState.MENU : GameState.LOBBY);
+        } else if (st === GameState.NAME_INPUT) {
+            if (code === 'Backspace') { this.nameInput = this.nameInput.slice(0, -1); this.rebuildMenu(); if (e.preventDefault) e.preventDefault(); }
+            else if (code === 'Enter' || code === 'Escape') { this._confirmNameInput(); }
+            else if (e.key && e.key.length === 1) {
+                const cc = e.key.charCodeAt(0);
+                if (cc >= 32 && cc <= 126 && this.nameInput.length < 20) { this.nameInput += e.key; this.rebuildMenu(); }
+            }
         } else if (st === GameState.PLAYING) {
             if (this.isGameOver) {
                 if (code === 'KeyR') { this.saveGame(); this.resetGame(); this.rebuildMenu(); }
