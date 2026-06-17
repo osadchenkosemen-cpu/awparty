@@ -22,8 +22,8 @@ const C = {
     // --- FPS limit options (Game.cpp constructor) ---
     FPS_LIMITS: [30, 60, 120, 240, 0],
 
-    // Asset base path (assets currently live in the C++ project folder)
-    ASSET_PATH: 'AwParty/assets/',
+    // Asset base path (assets live in the repo root so it's self-contained)
+    ASSET_PATH: 'assets/',
 };
 
 // GameState enum (Game.h)
