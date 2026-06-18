@@ -69,7 +69,7 @@ class Shop {
             case 1: return 180;
             case 2: return 250;
             case 3: return 80 + cur * 10;
-            case 4: return 150;
+            case 4: return 350;
             case 5: return 280;
             case 6: return 80;
             case 7: return 120 + this.s.permDashLevel * 60;

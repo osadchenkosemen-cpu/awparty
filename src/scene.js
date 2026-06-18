@@ -393,7 +393,7 @@ class MainScene extends Phaser.Scene {
         // Реген
         if (s.permRegen > 0 && p.hp < p.maxHp) {
             this.regenTimer += dt;
-            const interval = 8 - s.permRegen * 2;
+            const interval = 8 - s.permRegen; // макс уровень (3): 1 HP / 5 сек = 0.2 HP/с
             if (this.regenTimer >= interval) { this.regenTimer = 0; p.hp = Math.min(p.hp + 1, p.maxHp); }
         }
 
