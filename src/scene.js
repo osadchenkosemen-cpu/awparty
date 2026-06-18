@@ -312,6 +312,8 @@ class MainScene extends Phaser.Scene {
     // ===================== СМЕНА СОСТОЯНИЯ =====================
     setState(ns) {
         this.currentState = ns;
+        // Глушим зацикленный сигнал тревоги при уходе из боя (оверлей-функция там не вызывается).
+        if (ns !== GameState.PLAYING && this._warnSound) { this.audio.stopLoopSfx(this._warnSound); this._warnSound = null; }
         this.rebuildMenu();
         this.updateCursor();
         if (this.audio) {
@@ -1125,6 +1127,10 @@ class MainScene extends Phaser.Scene {
             warnA = Math.abs(Math.sin(this.phase3Timer * 10)) * 110 / 255; warnCol = 0x00e6ff;
         }
         this.warnRect.setVisible(warnA > 0).setFillStyle(warnCol, warnA);
+        // Звук «внимание» — зациклен, пока мерцает экран; стоп, когда мерцание гаснет.
+        if (warnA > 0) {
+            if (!this._warnSound) this._warnSound = this.audio.playLoopSfx('sfx_boss_warning', { volume: 0.8 });
+        } else if (this._warnSound) { this.audio.releaseLoopSfx(this._warnSound); this._warnSound = null; }
     }
 
     // ===================== АНИМАЦИЯ LEVEL UP =====================

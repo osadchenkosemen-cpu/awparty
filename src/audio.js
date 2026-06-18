@@ -2,7 +2,7 @@
 // Грузится обычным <script>, как остальные модули (глобальный класс).
 
 // Версия аудио-ассетов для анти-кэша. Меняйте при замене любого .wav/.mp3.
-const AUDIO_VER = 2;
+const AUDIO_VER = 3;
 
 // Ключ -> файл (лежат в C.ASSET_PATH вместе с текстурами).
 const AUDIO_MANIFEST = [
@@ -16,6 +16,7 @@ const AUDIO_MANIFEST = [
     ['sfx_levelup', 'lvlup.wav'],
     ['sfx_menu_click', 'menu_click.wav'],      // подтверждение выбора в меню
     ['sfx_skillbought', 'skillbought.wav'],    // покупка в магазине
+    ['sfx_boss_warning', 'attention.wav'],     // мерцание экрана перед спавном босса
     // Музыка (зацикленная)
     ['mus_menu', 'sound_menu.wav'],
     ['mus_round', 'soundround.mp3'],
@@ -73,6 +74,28 @@ class AudioManager {
         }
         const vol = (opts.volume == null ? 1 : opts.volume) * this.sfxVolume;
         this.scene.sound.play(key, { volume: vol });
+    }
+
+    // Зацикленный SFX (например, сигнал тревоги, пока мерцает экран).
+    // Возвращает объект звука — его нужно остановить через stopLoopSfx().
+    playLoopSfx(key, opts) {
+        opts = opts || {};
+        if (!this.scene.cache.audio.exists(key)) return null;
+        if (this.scene.sound.locked) return null; // до разблокировки звука не стартуем
+        const vol = (opts.volume == null ? 1 : opts.volume) * this.sfxVolume;
+        const snd = this.scene.sound.add(key, { loop: true, volume: vol });
+        snd.play();
+        return snd;
+    }
+
+    stopLoopSfx(snd) { if (snd) { snd.stop(); snd.destroy(); } }
+
+    // Мягко завершить зацикленный SFX: больше не повторять, дать текущему проходу
+    // доиграть до конца (естественный «хвост» файла), затем убрать объект.
+    releaseLoopSfx(snd) {
+        if (!snd) return;
+        snd.setLoop(false); // текущий проход доиграет и остановится сам
+        snd.once(Phaser.Sound.Events.COMPLETE, () => snd.destroy());
     }
 
     // Какая музыка соответствует игровому состоянию.
