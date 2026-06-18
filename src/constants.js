@@ -66,7 +66,13 @@ const BossState = { WALKING: 0, PREPARING: 1, JUMPING: 2, RECOVERING: 3 };
 const GoblinState = { WALKING: 0, PREPARING: 1, THROWING: 2, RECOVERING: 3 };
 
 // In-run upgrade icons (тексты названий/описаний — в i18n.js: upgrade_titles / upgrade_descs)
-const UPGRADE_ICONS = ['icon_fire', 'icon_dmg', 'icon_speed', 'icon_magnet', 'icon_hp'];
+const UPGRADE_ICONS = ['icon_fire', 'icon_dmg', 'icon_speed', 'icon_magnet', 'icon_hp', 'icon_blademail', 'icon_pierce'];
+
+// Легендарные карточки (золотая рамка, без этапов прокачки, выпадают реже обычных).
+// id 5 = блейдмейл, id 6 = прострел.
+const LEGENDARY_UPGRADE_IDS = [5, 6];
+// Шанс, что конкретная легендарная карта вообще попадёт в пул выбора при ап-левеле.
+const LEGENDARY_CARD_CHANCE = 0.18;
 
 // Ability data (AbilitySelectUI.cpp). Названия — в i18n.js: ability_names.
 const ABILITY_COOLDOWNS = { 0: 25, 1: 15, 2: 12, 3: 14 };
@@ -111,6 +117,8 @@ const TEXTURE_MANIFEST = [
     ['icon_speed', 'icon_speed.png'],
     ['icon_magnet', 'icon_magnet.png'],
     ['icon_hp', 'icon_hp.png'],
+    ['icon_blademail', 'icon_blademail.png'],
+    ['icon_pierce', 'icon_pierce.png'],
 ];
 
 // Player walk animation frames: dir -> [6 keys] (Game.cpp constructor)

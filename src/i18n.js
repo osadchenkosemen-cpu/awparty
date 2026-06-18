@@ -86,17 +86,22 @@ const I18N = {
         ability_desc_3: 'Fire a piercing laser\nbeam toward the cursor.',
 
         // --- Тосты апгрейдов над игроком ---
-        upgrade_toasts: ['UPGRADE: Fire Rate +', 'UPGRADE: Damage +', 'UPGRADE: Speed +', 'UPGRADE: Magnet +', 'UPGRADE: Max HP +1'],
+        upgrade_toasts: ['UPGRADE: Fire Rate +', 'UPGRADE: Damage +', 'UPGRADE: Speed +', 'UPGRADE: Magnet +', 'UPGRADE: Max HP +1', 'UNLOCKED: Blademail', 'UNLOCKED: Pierce Shot'],
 
         // --- Апгрейды (карточки level up) ---
-        upgrade_titles: ['FAST TRIGGER', 'BRUTE FORCE', 'RUNNER', 'MAGNETISM', 'HEALTH UP'],
+        upgrade_titles: ['FAST TRIGGER', 'BRUTE FORCE', 'RUNNER', 'MAGNETISM', 'HEALTH UP', 'BLADEMAIL', 'PIERCE SHOT'],
         upgrade_descs: [
             'Increases firing\nspeed.',
             'Increases bullet\ndamage.',
             'Increases movement\nspeed.',
             'Increases pickup\nradius.',
             'Increases Max HP\nby 10.',
+            'Enemies that hit you\ntake damage back.',
+            'Bullets pierce 1 enemy,\n+50% dmg to the next.',
         ],
+
+        // --- Бейдж легендарной карточки ---
+        card_legendary: '★ LEGENDARY ★',
 
         // --- Способности ---
         ability_names: ['INVINCIBILITY', 'GROUND SLAM', 'DISC STORM', 'LASER'],
@@ -229,17 +234,22 @@ const I18N = {
         ability_desc_3: 'Выпустить пробивающий\nлуч в сторону курсора.',
 
         // --- Тосты апгрейдов над игроком ---
-        upgrade_toasts: ['УЛУЧШЕНИЕ: Скорострельность +', 'УЛУЧШЕНИЕ: Урон +', 'УЛУЧШЕНИЕ: Скорость +', 'УЛУЧШЕНИЕ: Магнит +', 'УЛУЧШЕНИЕ: Макс. HP +1'],
+        upgrade_toasts: ['УЛУЧШЕНИЕ: Скорострельность +', 'УЛУЧШЕНИЕ: Урон +', 'УЛУЧШЕНИЕ: Скорость +', 'УЛУЧШЕНИЕ: Магнит +', 'УЛУЧШЕНИЕ: Макс. HP +1', 'ОТКРЫТО: Блейдмейл', 'ОТКРЫТО: Прострел'],
 
         // --- Апгрейды (карточки level up) ---
-        upgrade_titles: ['БЫСТРЫЙ КУРОК', 'ГРУБАЯ СИЛА', 'БЕГУН', 'МАГНЕТИЗМ', 'ПРИБАВКА HP'],
+        upgrade_titles: ['БЫСТРЫЙ КУРОК', 'ГРУБАЯ СИЛА', 'БЕГУН', 'МАГНЕТИЗМ', 'ПРИБАВКА HP', 'БЛЕЙДМЕЙЛ', 'ПРОСТРЕЛ'],
         upgrade_descs: [
             'Повышает скорость\nстрельбы.',
             'Повышает урон\nпуль.',
             'Повышает скорость\nпередвижения.',
             'Повышает радиус\nподбора.',
             'Повышает макс. HP\nна 10.',
+            'Враг получает урон,\nкогда бьёт вас.',
+            'Пуля пробивает врага,\n+50% урона следующему.',
         ],
+
+        // --- Бейдж легендарной карточки ---
+        card_legendary: '★ ЛЕГЕНДАРНАЯ ★',
 
         // --- Способности ---
         ability_names: ['НЕУЯЗВИМОСТЬ', 'УДАР ОЗЕМЬ', 'ВИХРЬ ДИСКОВ', 'ЛАЗЕР'],

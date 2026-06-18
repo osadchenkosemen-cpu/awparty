@@ -112,7 +112,7 @@ class MainScene extends Phaser.Scene {
         this.shotsFired = 0;
 
         // Уровни прокачек в забеге
-        this.runUpgradeLevels = [0, 0, 0, 0, 0];
+        this.runUpgradeLevels = [0, 0, 0, 0, 0, 0, 0];
 
         // Индексы выбора в меню
         this.selectedMenuIndex = 0;
@@ -266,6 +266,7 @@ class MainScene extends Phaser.Scene {
         this.regenTimer = 0; this.shotsFired = 0;
         p.sprite.setPosition(C.ARENA_WIDTH / 2, C.ARENA_HEIGHT / 2);
         p.isInvincible = false; p.invincibilityTimer = 0;
+        p.bladeMail = false; p.pierce = false; // карточки: блейдмейл (шипы) / прострел (пробитие)
 
         this.survivalTimer = 0; this.vinylSpawnTimer = 0; this.phase2BossSpawned = false; this.phase3BossSpawned = false;
         this.gamePhase = GamePhase.PHASE_1; this.phaseNotifTimer = 0; this.activeStep = 1;
@@ -284,7 +285,7 @@ class MainScene extends Phaser.Scene {
         this._releaseAll(this.dmgTexts, 'dmgText');
         this.player.ghosts.forEach(g => g.img.destroy()); this.player.ghosts.length = 0;
 
-        for (let i = 0; i < 5; i++) this.runUpgradeLevels[i] = 0;
+        for (let i = 0; i < 7; i++) this.runUpgradeLevels[i] = 0;
         for (let i = 0; i < 3; i++) { this.equippedAbilities[i] = -1; this.abilityCooldowns[i] = 0; this.abilityMaxCooldowns[i] = 0; }
         this.pendingAbilityCount = 0;
         this.spawner.reset();
@@ -486,6 +487,7 @@ class MainScene extends Phaser.Scene {
                 const n = normalize(dx, dy);
                 const mb = this.spawnBullet(px, py, n.x, n.y, finalDmg, isCrit);
                 if ((s.permActiveArtifacts >> 2) & 1) mb.ricochetsLeft = 1;
+                if (p.pierce) mb.pierceLeft = 1;
                 this.bullets.push(mb);
                 this.shotsFired++;
                 if (s.permMultishot > 0 && this.shotsFired % 8 === 0) {
@@ -493,6 +495,7 @@ class MainScene extends Phaser.Scene {
                     const sd = { x: n.x * ca - n.y * sa, y: n.x * sa + n.y * ca };
                     const sb = this.spawnBullet(px, py, sd.x, sd.y, finalDmg, isCrit);
                     if ((s.permActiveArtifacts >> 2) & 1) sb.ricochetsLeft = 1;
+                    if (p.pierce) sb.pierceLeft = 1;
                     this.bullets.push(sb);
                 }
                 p.currentCooldown = p.shootCooldown;
@@ -527,7 +530,18 @@ class MainScene extends Phaser.Scene {
                 p.takeDamage(e.damage);
                 if (p.hp < oldHp) { this.triggerShake(0.2, 2 * e.damage); this.audio.play('sfx_player_hurt'); }
                 if (p.hp <= 0 && !this.isGameOver) this.onPlayerDeath();
+
+                // Блейдмейл (шипы): враг, врезавшийся в героя, получает урон.
+                // Кулдаун на враге, чтобы контакт не сливал HP каждый кадр.
+                if (p.bladeMail && !(e.bladeMailCd > 0)) {
+                    const thorns = Math.max(25, p.attackDamage * 2);
+                    e.hp -= thorns;
+                    e.hitFlashTimer = 0.12;
+                    e.bladeMailCd = 0.5;
+                    this.dmgTexts.push(this.spawnDamageText(e.sprite.x, e.sprite.y, thorns, false));
+                }
             }
+            if (e.bladeMailCd > 0) e.bladeMailCd -= dt;
 
             // Лазерный луч STROBE: урон, если игрок на линии луча (i-frames в takeDamage не дают слить HP)
             if (e.isBoss3 && e.beamActive) {
@@ -547,13 +561,20 @@ class MainScene extends Phaser.Scene {
             }
 
             for (const b of this.bullets) {
-                if (b.isDestroyed) continue;
+                if (b.isDestroyed || b.lastHit === e) continue;
                 const hitDist = e.isBoss ? 150 * 150 : 2500;
                 if (distSq(e.sprite.x, e.sprite.y, b.sprite.x, b.sprite.y) < hitDist) {
                     e.hp -= b.damage;
-                    b.isDestroyed = true;
                     e.hitFlashTimer = 0.08;
                     this.dmgTexts.push(this.spawnDamageText(e.sprite.x, e.sprite.y, b.damage, b.isCrit));
+                    // Прострел: пуля проходит насквозь, следующему врагу — 50% урона.
+                    if (b.pierceLeft > 0) {
+                        b.pierceLeft--;
+                        b.lastHit = e; // не бить того же врага повторно
+                        b.damage = Math.max(1, Math.floor(b.damage * 0.5));
+                    } else {
+                        b.isDestroyed = true;
+                    }
                 }
             }
         }
@@ -934,11 +955,18 @@ class MainScene extends Phaser.Scene {
         p.xpToNextLevel *= 1.5;
         p.hp = Math.min(p.maxHp, p.hp + 20); // не полное восстановление, а +20 HP
         this.levelUpAnimTimer = 0;
-        const id1 = randInt(5);
-        let id2, id3;
-        do { id2 = randInt(5); } while (id2 === id1);
-        do { id3 = randInt(5); } while (id3 === id1 || id3 === id2);
-        this.levelUpIds = [id1, id2, id3];
+        // Пул: стакаемые карты 0..4 всегда доступны. Легендарные (блейдмейл/прострел) —
+        // только пока не взяты и лишь по редкому ролу, поэтому выпадают заметно реже обычных.
+        const pool = [0, 1, 2, 3, 4];
+        for (const lid of LEGENDARY_UPGRADE_IDS) {
+            if (this.runUpgradeLevels[lid] === 0 && Math.random() < LEGENDARY_CARD_CHANCE) pool.push(lid);
+        }
+        const ids = [];
+        while (ids.length < 3) {
+            const c = pool[randInt(pool.length)];
+            if (!ids.includes(c)) ids.push(c);
+        }
+        this.levelUpIds = ids;
         this.selectedLevelUpIndex = -1;
         this.audio.play('sfx_levelup', { volume: 0.55 });
         this.setState(GameState.LEVEL_UP);
@@ -953,9 +981,11 @@ class MainScene extends Phaser.Scene {
         else if (id === 2 && p.speed < 400) p.speed += 20;
         else if (id === 3 && p.pickupRadius < 600) p.pickupRadius += 50;
         else if (id === 4) { p.maxHp += 10; p.hp = p.maxHp; }
+        else if (id === 5) p.bladeMail = true; // блейдмейл: враг при контакте получает урон
+        else if (id === 6) p.pierce = true;    // прострел: пуля пробивает врага насквозь
         p.lastUpgradeId = id;
         p.messageTimer = 2.0;
-        if (id >= 0 && id < 5) this.runUpgradeLevels[id]++;
+        if (id >= 0 && id < 7) this.runUpgradeLevels[id]++;
         this.selectedLevelUpIndex = -1;
         this.setState(GameState.PLAYING);
     }
@@ -1336,22 +1366,30 @@ class MainScene extends Phaser.Scene {
             const uId = this.levelUpIds[i];
             const cx = W / 2 + (i - 1) * 450;
             const cy = H / 2 + 50;
-            const rect = this._mAdd(this.add.rectangle(cx, cy, 400, 550, 0x140028, 240 / 255).setOrigin(0.5, 0.5).setStrokeStyle(5, 0x9600ff));
-            const title = this._mText(cx, cy - 230, t('upgrade_titles')[uId], 35, '#00ffc8', 0.5, 0);
+            // Легендарные карты — золотая рамка/заголовок и бейдж, без звёзд-этапов.
+            const isLegendary = LEGENDARY_UPGRADE_IDS.includes(uId);
+            const fill = isLegendary ? 0x2a2000 : 0x140028;
+            const strokeCol = isLegendary ? 0xffd200 : 0x9600ff;
+            const strokeW = isLegendary ? 7 : 5;
+            const titleCol = isLegendary ? '#ffd200' : '#00ffc8';
+            const rect = this._mAdd(this.add.rectangle(cx, cy, 400, 550, fill, 240 / 255).setOrigin(0.5, 0.5).setStrokeStyle(strokeW, strokeCol));
+            const title = this._mText(cx, cy - 230, t('upgrade_titles')[uId], 35, titleCol, 0.5, 0);
             const icon = this._mAdd(this.add.sprite(cx, cy - 30, UPGRADE_ICONS[uId]).setOrigin(0.5, 0.5));
             const iscale = 180 / icon.width;
             icon.setScale(iscale);
             const desc = this._mText(cx, cy + 110, t('upgrade_descs')[uId], 25, '#ffffff', 0.5, 0);
-            let starsObj = null;
+            let badgeObj = null;
             const cnt = this.runUpgradeLevels[uId];
-            if (cnt > 0) {
+            if (isLegendary) {
+                badgeObj = this._mText(cx, cy + 215, t('card_legendary'), 26, '#ffd200', 0.5, 0.5, '#643c00', 3);
+            } else if (cnt > 0) {
                 let stars = '';
                 for (let s = 0; s < cnt; s++) stars += '*';
-                starsObj = this._mText(cx, cy + 215, stars, 28, '#ffd200', 0.5, 0.5, '#643c00', 2);
+                badgeObj = this._mText(cx, cy + 215, stars, 28, '#ffd200', 0.5, 0.5, '#643c00', 2);
             }
-            const objs = [rect, title, icon, desc]; if (starsObj) objs.push(starsObj);
+            const objs = [rect, title, icon, desc]; if (badgeObj) objs.push(badgeObj);
             const baseY = objs.map(o => o.y);
-            const baseSX = [1, 1, iscale, 1]; if (starsObj) baseSX.push(1);
+            const baseSX = [1, 1, iscale, 1]; if (badgeObj) baseSX.push(1);
             this.levelUpCards.push({ rect, objs, baseY, baseSX, uId });
         }
         this._animateLevelUp();

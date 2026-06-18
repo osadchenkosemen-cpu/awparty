@@ -710,6 +710,8 @@ class Bullet {
         this.isDestroyed = false;
         this.isCrit = crit;
         this.ricochetsLeft = 0;
+        this.pierceLeft = 0;   // прострел: сколько врагов ещё пробьёт
+        this.lastHit = null;   // последний пробитый враг (чтобы не бить его дважды)
         this.history = [{ x, y }];
         this.vx = dirx * this.speed;
         this.vy = diry * this.speed;
