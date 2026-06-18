@@ -83,7 +83,7 @@ const ABILITY_ICONS = { '-10': 'ability_dash', 0: 'ability_invincible', 1: 'abil
 
 // Artifact info (ShopUI.cpp)
 const ARTIFACTS = [
-    { name: 'BLOOD PACT', desc: 'Crit hit heals 0.2 HP', cost: 800 },
+    { name: 'BLOOD PACT', desc: 'Kill heals 0.2 HP', cost: 800 },
     { name: 'GLASS CANNON', desc: '+30% dmg, Max HP -2', cost: 1000 },
     { name: 'ECHO CHAMBER', desc: 'Bullets ricochet off walls', cost: 1100 },
     { name: 'SOUL LEECH', desc: '+0.5% crit/kill  (max 10x)', cost: 1400 },

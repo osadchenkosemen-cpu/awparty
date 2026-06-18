@@ -515,14 +515,6 @@ class MainScene extends Phaser.Scene {
                     b.isDestroyed = true;
                     e.hitFlashTimer = 0.08;
                     this.dmgTexts.push(this.spawnDamageText(e.sprite.x, e.sprite.y, b.damage, b.isCrit));
-                    if (((s.permActiveArtifacts >> 0) & 1) && b.isCrit) {
-                        this.bloodPactHealAcc += 0.2;
-                        if (this.bloodPactHealAcc >= 1) {
-                            const heal = Math.floor(this.bloodPactHealAcc);
-                            p.hp = Math.min(p.maxHp, p.hp + heal);
-                            this.bloodPactHealAcc -= heal;
-                        }
-                    }
                 }
             }
         }
@@ -772,6 +764,15 @@ class MainScene extends Phaser.Scene {
                 // Жёсткий потолок 75%: крит остаётся шансом, а не гарантией каждый выстрел.
                 const cap = Math.min(0.75, p.baseCritChance * 10);
                 p.critChance = Math.min(cap, p.critChance + 0.005);
+            }
+            // BLOOD PACT: вампиризм за килл — 0.2 HP за убийство (копится до целого HP).
+            if (((s.permActiveArtifacts >> 0) & 1) && p.hp < p.maxHp) {
+                this.bloodPactHealAcc += 0.2;
+                if (this.bloodPactHealAcc >= 1) {
+                    const heal = Math.floor(this.bloodPactHealAcc);
+                    p.hp = Math.min(p.maxHp, p.hp + heal);
+                    this.bloodPactHealAcc -= heal;
+                }
             }
             const ex = e.sprite.x, ey = e.sprite.y;
             if (e.type === EnemyType.GOBLIN) {
