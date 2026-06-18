@@ -90,12 +90,15 @@ class AudioManager {
 
     stopLoopSfx(snd) { if (snd) { snd.stop(); snd.destroy(); } }
 
-    // Мягко завершить зацикленный SFX: больше не повторять, дать текущему проходу
-    // доиграть до конца (естественный «хвост» файла), затем убрать объект.
-    releaseLoopSfx(snd) {
+    // Мягко завершить зацикленный SFX: плавно увести громкость в ноль твином
+    // (durMs), не обрывая звук резко, затем остановить и убрать объект.
+    releaseLoopSfx(snd, durMs) {
         if (!snd) return;
-        snd.setLoop(false); // текущий проход доиграет и остановится сам
-        snd.once(Phaser.Sound.Events.COMPLETE, () => snd.destroy());
+        durMs = durMs == null ? 600 : durMs;
+        this.scene.tweens.add({
+            targets: snd, volume: 0, duration: durMs, ease: 'Linear',
+            onComplete: () => { snd.stop(); snd.destroy(); },
+        });
     }
 
     // Какая музыка соответствует игровому состоянию.
