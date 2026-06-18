@@ -120,6 +120,9 @@ class MainScene extends Phaser.Scene {
         this.nameInput = ''; // ввод ника на экране NAME_INPUT
         this._pendingHighlight = null; // имя игрока, чью строку подсветить после отправки
         this._nameError = '';          // сообщение об ошибке на экране ввода ника
+        this.renameInput = '';         // ввод нового ника на экране RENAME_INPUT
+        this._renameError = '';        // сообщение об ошибке на экране переименования
+        this._renameBusy = false;      // запрос переименования в процессе
         this.levelUpIds = [0, 1, 2];
         this.cheatBuffer = '';
         this.cheatMessage = '';
@@ -1051,7 +1054,7 @@ class MainScene extends Phaser.Scene {
         const st = this.currentState;
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
 
-        const showBg = (st === GameState.MENU || st === GameState.SETTINGS || st === GameState.LOBBY || st === GameState.LEADERBOARD);
+        const showBg = (st === GameState.MENU || st === GameState.SETTINGS || st === GameState.LOBBY || st === GameState.LEADERBOARD || st === GameState.RENAME_INPUT);
         this.menuBg.setVisible(showBg);
         this.lobbyPlayer.setVisible(st === GameState.LOBBY);
         const hudVisible = (st === GameState.PLAYING || st === GameState.PAUSED || st === GameState.LEVEL_UP || st === GameState.ABILITY_SELECT);
@@ -1075,6 +1078,7 @@ class MainScene extends Phaser.Scene {
         else if (st === GameState.LEVEL_UP) this._buildLevelUp();
         else if (st === GameState.ABILITY_SELECT) this._buildAbilitySelect();
         else if (st === GameState.NAME_INPUT) this._buildNameInput();
+        else if (st === GameState.RENAME_INPUT) this._buildRenameInput();
         else if (st === GameState.PLAYING && this.isGameOver) this._buildGameOver();
     }
 
@@ -1114,6 +1118,7 @@ class MainScene extends Phaser.Scene {
             'Window Mode: < ' + (s.isFullscreen ? 'FULLSCREEN' : 'WINDOWED') + ' >',
             'Sound: < ' + s.soundVolume + '% >',
             'Effects: < ' + s.effectsVolume + '% >',
+            'Rename Player: ' + (s.playerName ? s.playerName : '(not set)'),
             'Back',
         ];
         for (let i = 0; i < items.length; i++) {
@@ -1187,6 +1192,25 @@ class MainScene extends Phaser.Scene {
 
         if (errored) this._mText(W / 2, H * 0.66, this._nameError, 34, '#ff5078', 0.5, 0.5, '#000', 2);
         this._mText(W / 2, H * 0.74, 'ENTER  -  Confirm        BACKSPACE  -  Erase', 30, '#7d78a0', 0.5, 0.5, '#000', 2);
+    }
+
+    _buildRenameInput() {
+        const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
+        this._mAdd(this.add.rectangle(0, 0, W, H, 0x0a001e, 230 / 255).setOrigin(0, 0));
+        this._mText(W / 2, H * 0.20, 'RENAME PLAYER', 100, '#ffd700', 0.5, 0.5, '#b40050', 5);
+        this._mText(W / 2, H * 0.34, 'Current name:  ' + (this.save.playerName || '(not set)'), 40, '#00ffc8', 0.5, 0.5, '#000', 3);
+        this._mText(W / 2, H * 0.46, 'New name:', 38, '#dcd7eb', 0.5, 0.5, '#000', 2);
+
+        const boxW = 760, boxH = 96, boxY = H * 0.56;
+        const errored = !!this._renameError;
+        this._mAdd(this.add.rectangle(W / 2, boxY, boxW, boxH, 0x140028, 1).setOrigin(0.5, 0.5).setStrokeStyle(3, errored ? 0xff3264 : 0x9600ff));
+        this._mText(W / 2, boxY, this.renameInput + '_', 50, '#ffffff', 0.5, 0.5, '#000', 2);
+
+        if (this._renameBusy) this._mText(W / 2, H * 0.64, 'Saving...', 34, '#ffd700', 0.5, 0.5, '#000', 2);
+        else if (errored) this._mText(W / 2, H * 0.64, this._renameError, 34, '#ff5078', 0.5, 0.5, '#000', 2);
+
+        this._mText(W / 2, H * 0.74, 'Merges leaderboard records, keeps your best time per mode.', 26, '#7d78a0', 0.5, 0.5, '#000', 2);
+        this._mText(W / 2, H * 0.80, 'ENTER  -  Confirm        ESC  -  Cancel', 30, '#7d78a0', 0.5, 0.5, '#000', 2);
     }
 
     _buildLevelUp() {
@@ -1283,7 +1307,7 @@ class MainScene extends Phaser.Scene {
             if (ns !== -1 && ns !== this.selectedMenuIndex) { this.selectedMenuIndex = ns; this.rebuildMenu(); }
         } else if (st === GameState.SETTINGS) {
             let ns = -1;
-            for (let i = 0; i < 6; i++) if (hit(W / 2 - 300, H * 0.30 + i * 110 - 40, 600, 80)) ns = i;
+            for (let i = 0; i < 7; i++) if (hit(W / 2 - 300, H * 0.30 + i * 110 - 40, 600, 80)) ns = i;
             if (ns !== -1 && ns !== this.selectedSettingIndex) { this.selectedSettingIndex = ns; this.rebuildMenu(); }
         } else if (st === GameState.LOBBY) {
             let ns = -1;
@@ -1324,7 +1348,7 @@ class MainScene extends Phaser.Scene {
         } else if (st === GameState.LEADERBOARD) {
             if (hit(W / 2 - 150, H * 0.9 - 30, 300, 60)) this.setState(this.leaderboardFromMenu ? GameState.MENU : GameState.LOBBY);
         } else if (st === GameState.SETTINGS) {
-            for (let i = 0; i < 6; i++) if (hit(W / 2 - 300, H * 0.30 + i * 110 - 40, 600, 80)) { this.selectedSettingIndex = i; this._settingsActivate(); return; }
+            for (let i = 0; i < 7; i++) if (hit(W / 2 - 300, H * 0.30 + i * 110 - 40, 600, 80)) { this.selectedSettingIndex = i; this._settingsActivate(); return; }
         } else if (st === GameState.PAUSED) {
             for (let i = 0; i < 3; i++) if (hit(W / 2 - 250, H / 2 + 50 + i * 100 - 40, 500, 80)) { this.selectedPauseIndex = i; this._pauseActivate(); return; }
         } else if (st === GameState.LOBBY) {
@@ -1380,7 +1404,65 @@ class MainScene extends Phaser.Scene {
         else if (i === 2) { s.isFullscreen = !s.isFullscreen; if (s.isFullscreen) { if (!this.scale.isFullscreen) this.scale.startFullscreen(); } else if (this.scale.isFullscreen) this.scale.stopFullscreen(); this.saveGame(); this.rebuildMenu(); }
         else if (i === 3) { this._adjustVolume('sound', +1); }
         else if (i === 4) { this._adjustVolume('effects', +1); }
-        else if (i === 5) { this.saveGame(); this.setState(GameState.MENU); }
+        else if (i === 5) { this._openRename(); }
+        else if (i === 6) { this.saveGame(); this.setState(GameState.MENU); }
+    }
+
+    _openRename() {
+        if (!this.save.playerName) {
+            this.cheatMessage = 'No player name yet — set one by scoring first';
+            this.cheatMessageTimer = 3;
+            this.rebuildMenu();
+            return;
+        }
+        this.renameInput = this.save.playerName;
+        this._renameError = '';
+        this._renameBusy = false;
+        this.setState(GameState.RENAME_INPUT);
+    }
+
+    _confirmRename() {
+        if (this._renameBusy) return;
+        const oldName = this.save.playerName;
+        const typed = this.renameInput.trim();
+        if (!oldName) { this.setState(GameState.SETTINGS); return; }
+        if (!typed) { this._renameError = 'Enter a name'; this.rebuildMenu(); return; }
+        if (typed === oldName) { this.setState(GameState.SETTINGS); return; }
+        this._renameBusy = true;
+        this._renameError = '';
+        this.rebuildMenu();
+        // Удалённо (мёрж по лучшему времени), затем локально.
+        RemoteLeaderboard.rename(oldName, typed, (ok) => {
+            if (this.currentState !== GameState.RENAME_INPUT) return;
+            this._renameBusy = false;
+            if (!ok) { this._renameError = 'Server error, try again'; this.rebuildMenu(); return; }
+            this._applyLocalRename(oldName, typed);
+            this.save.playerName = typed;
+            this.saveGame();
+            this.audio.play('sfx_menu_click');
+            this.setState(GameState.SETTINGS);
+        });
+    }
+
+    // Переименовать игрока в локальном кэше обеих таблиц; слить дубликаты по лучшему времени.
+    _applyLocalRename(oldName, newName) {
+        for (const mode of ['normal', 'hardcore']) {
+            const src = this.leaderboards[mode] || [];
+            const merged = []; // лучшая запись на имя
+            for (const raw of src) {
+                if (!raw || raw.time <= 0) continue;
+                const e = Object.assign({}, raw);
+                if (e.name === oldName) e.name = newName;
+                const j = merged.findIndex(m => m.name === e.name);
+                if (j === -1) merged.push(e);
+                else if (e.time > merged[j].time) merged[j] = e;
+            }
+            merged.sort((a, b) => b.time - a.time);
+            const list = merged.slice(0, 10);
+            while (list.length < 10) list.push({ name: '', time: 0, day: 0, month: 0, year: 0 });
+            this.leaderboards[mode] = list;
+            SaveSystem.saveLeaderboard(list, mode === 'hardcore');
+        }
     }
 
     // Изменить громкость на dir*10 (с обёрткой 0..100), применить к аудио и сохранить.
@@ -1432,8 +1514,8 @@ class MainScene extends Phaser.Scene {
             if (enter) { this.shop._buyAndNotify(); this.saveGame(); this.shop.redraw(); }
             if (esc) { this.audio.play('sfx_menu_click'); this.saveGame(); this.setState(GameState.LOBBY); }
         } else if (st === GameState.SETTINGS) {
-            if (up) { this.selectedSettingIndex = (this.selectedSettingIndex + 5) % 6; this.rebuildMenu(); }
-            if (down) { this.selectedSettingIndex = (this.selectedSettingIndex + 1) % 6; this.rebuildMenu(); }
+            if (up) { this.selectedSettingIndex = (this.selectedSettingIndex + 6) % 7; this.rebuildMenu(); }
+            if (down) { this.selectedSettingIndex = (this.selectedSettingIndex + 1) % 7; this.rebuildMenu(); }
             if (left && this.selectedSettingIndex === 1) { this.save.currentFpsIndex = (this.save.currentFpsIndex + 4) % 5; this.saveGame(); this.rebuildMenu(); }
             if (right && this.selectedSettingIndex === 1) { this.save.currentFpsIndex = (this.save.currentFpsIndex + 1) % 5; this.saveGame(); this.rebuildMenu(); }
             if (this.selectedSettingIndex === 3) { if (left) this._adjustVolume('sound', -1); if (right) this._adjustVolume('sound', +1); }
@@ -1458,6 +1540,15 @@ class MainScene extends Phaser.Scene {
             else if (e.key && e.key.length === 1) {
                 const cc = e.key.charCodeAt(0);
                 if (cc >= 32 && cc <= 126 && this.nameInput.length < 20) { this.nameInput += e.key; this._nameError = ''; this.rebuildMenu(); }
+            }
+        } else if (st === GameState.RENAME_INPUT) {
+            if (this._renameBusy) { if (e.preventDefault) e.preventDefault(); return; }
+            if (code === 'Backspace') { this.renameInput = this.renameInput.slice(0, -1); this._renameError = ''; this.rebuildMenu(); if (e.preventDefault) e.preventDefault(); }
+            else if (code === 'Escape') { this.audio.play('sfx_menu_click'); this.setState(GameState.SETTINGS); }
+            else if (code === 'Enter') { this._confirmRename(); }
+            else if (e.key && e.key.length === 1) {
+                const cc = e.key.charCodeAt(0);
+                if (cc >= 32 && cc <= 126 && this.renameInput.length < 20) { this.renameInput += e.key; this._renameError = ''; this.rebuildMenu(); }
             }
         } else if (st === GameState.PLAYING) {
             if (this.isGameOver) {

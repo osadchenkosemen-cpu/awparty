@@ -57,4 +57,18 @@ const RemoteLeaderboard = {
             .then(r => { if (cb) cb(r.ok); })
             .catch(() => { if (cb) cb(false); });
     },
+
+    // Переименовать игрока во всех режимах через RPC rename_player.
+    // Если новое имя уже занято в каком-то режиме — записи сливаются, остаётся лучшее время.
+    // cb(true|false) — успех. Без конфига возвращает true (рейтинг локальный, переименование делается на месте).
+    rename(oldName, newName, cb) {
+        if (!this.configured()) { if (cb) cb(true); return; }
+        fetch(SUPABASE_URL + '/rest/v1/rpc/rename_player', {
+            method: 'POST',
+            headers: Object.assign(this._headers(), { 'Prefer': 'return=minimal' }),
+            body: JSON.stringify({ p_old: oldName, p_new: newName }),
+        })
+            .then(r => { if (cb) cb(r.ok); })
+            .catch(() => { if (cb) cb(false); });
+    },
 };
