@@ -6,6 +6,11 @@
 const SPAWN_BASE_INTERVAL = 0.625;  // интервал обычного спавна на 1-м этапе (сек)
 const SPAWN_FREQ_PER_STAGE = 1.15;  // множитель частоты за каждый следующий этап
 const SPAWN_HARDCORE_FREQ = 1.5;    // в hardcore спавн ещё чаще
+const SPAWN_HARDCORE_HP = 2;        // в hardcore HP всех юнитов в N раз больше
+
+// Минимальная дистанция спавна врага от игрока (чтобы не появлялись вплотную).
+const SPAWN_SAFE_DIST = 700;        // обычные враги
+const SPAWN_SAFE_DIST_GOBLIN = 750; // гоблины — чуть дальше
 
 function findSpawnPos(px, py, arenaW, arenaH, safeRadius) {
     for (let attempt = 0; attempt < 10; attempt++) {
@@ -46,29 +51,29 @@ class EnemySpawner {
         if (isPhase3) {
             const spawnInterval = this.spawnInterval(step, isHardcore);
             if (this.spawnTimer >= spawnInterval) {
-                const p = findSpawnPos(px, py, arenaW, arenaH, 350);
+                const p = findSpawnPos(px, py, arenaW, arenaH, SPAWN_SAFE_DIST);
                 const e = new Enemy(scene, p.x, p.y, enemyKey);
                 const chance = randInt(100);
                 if (chance < 20) { e.makeFast(); e.hp += 2; e.maxHp += 2; e.damage += 2; }
                 else if (chance < 32) { e.makeTank(1); e.hp += 2; e.maxHp += 2; e.damage += 2; }
                 else { e.hp = e.maxHp = 4; e.damage = 3; }
-                if (isHardcore) e.speed *= 1.5;
+                if (isHardcore) { e.speed *= 1.5; e.hp *= SPAWN_HARDCORE_HP; e.maxHp *= SPAWN_HARDCORE_HP; }
                 enemies.push(e);
                 this.spawnTimer = 0;
             }
             if (this.goblinSpawnTimer >= 10) {
-                const p = findSpawnPos(px, py, arenaW, arenaH, 400);
+                const p = findSpawnPos(px, py, arenaW, arenaH, SPAWN_SAFE_DIST_GOBLIN);
                 const g = new Enemy(scene, p.x, p.y, enemyKey);
                 g.makeGoblin(goblinKey);
                 g.hp += 2; g.maxHp += 2; g.damage += 2;
-                if (isHardcore) g.speed *= 1.5;
+                if (isHardcore) { g.speed *= 1.5; g.hp *= SPAWN_HARDCORE_HP; g.maxHp *= SPAWN_HARDCORE_HP; }
                 enemies.push(g);
                 this.goblinSpawnTimer = 0;
             }
         } else if (!isPhase2) {
             // ФАЗА 1
             if (survivalTime < 60 && this.spawnTimer >= this.spawnInterval(step, isHardcore)) {
-                const p = findSpawnPos(px, py, arenaW, arenaH, 350);
+                const p = findSpawnPos(px, py, arenaW, arenaH, SPAWN_SAFE_DIST);
                 const e = new Enemy(scene, p.x, p.y, enemyKey);
                 const chance = randInt(100);
                 if (chance < 20) {
@@ -77,15 +82,15 @@ class EnemySpawner {
                     else { e.hp = e.maxHp = 2; }
                 } else if (chance < 32) e.makeTank(1);
                 else { e.hp = e.maxHp = 2; }
-                if (isHardcore) e.speed *= 1.5;
+                if (isHardcore) { e.speed *= 1.5; e.hp *= SPAWN_HARDCORE_HP; e.maxHp *= SPAWN_HARDCORE_HP; }
                 enemies.push(e);
                 this.spawnTimer = 0;
             }
             if (survivalTime >= 10 && survivalTime < 60 && this.goblinSpawnTimer >= 25) {
-                const p = findSpawnPos(px, py, arenaW, arenaH, 400);
+                const p = findSpawnPos(px, py, arenaW, arenaH, SPAWN_SAFE_DIST_GOBLIN);
                 const g = new Enemy(scene, p.x, p.y, enemyKey);
                 g.makeGoblin(goblinKey);
-                if (isHardcore) g.speed *= 1.5;
+                if (isHardcore) { g.speed *= 1.5; g.hp *= SPAWN_HARDCORE_HP; g.maxHp *= SPAWN_HARDCORE_HP; }
                 enemies.push(g);
                 this.goblinSpawnTimer = 0;
             }
@@ -100,7 +105,7 @@ class EnemySpawner {
                 }
                 const boss = new Enemy(scene, bx, by, enemyKey);
                 boss.makeBoss();
-                if (isHardcore) boss.speed *= 1.5;
+                if (isHardcore) { boss.speed *= 1.5; boss.hp *= SPAWN_HARDCORE_HP; boss.maxHp *= SPAWN_HARDCORE_HP; }
                 enemies.push(boss);
                 this.bossSpawned = true;
             }
@@ -108,22 +113,24 @@ class EnemySpawner {
             // ФАЗА 2
             const spawnInterval = this.spawnInterval(step, isHardcore);
             if (this.spawnTimer >= spawnInterval) {
-                const p = findSpawnPos(px, py, arenaW, arenaH, 350);
+                const p = findSpawnPos(px, py, arenaW, arenaH, SPAWN_SAFE_DIST);
                 const e = new Enemy(scene, p.x, p.y, enemyKey);
                 const chance = randInt(100);
                 if (chance < 20) { e.makeFast(); e.hp += 1; e.maxHp += 1; e.damage += 1; }
                 else if (chance < 32) { e.makeTank(1); e.hp += 1; e.maxHp += 1; e.damage += 1; }
                 else { e.hp = e.maxHp = 3; e.damage = 2; }
                 e.speed *= 1.25; // на 25% быстрее врагов фазы 1 (вместо прежнего hardcore-x1.5)
+                if (isHardcore) { e.hp *= SPAWN_HARDCORE_HP; e.maxHp *= SPAWN_HARDCORE_HP; }
                 enemies.push(e);
                 this.spawnTimer = 0;
             }
             if (this.goblinSpawnTimer >= 15) {
-                const p = findSpawnPos(px, py, arenaW, arenaH, 400);
+                const p = findSpawnPos(px, py, arenaW, arenaH, SPAWN_SAFE_DIST_GOBLIN);
                 const g = new Enemy(scene, p.x, p.y, enemyKey);
                 g.makeGoblin(goblinKey);
                 g.hp += 1; g.maxHp += 1; g.damage += 1;
                 g.speed *= 1.25; // на 25% быстрее, как и остальные враги фазы 2
+                if (isHardcore) { g.hp *= SPAWN_HARDCORE_HP; g.maxHp *= SPAWN_HARDCORE_HP; }
                 enemies.push(g);
                 this.goblinSpawnTimer = 0;
             }

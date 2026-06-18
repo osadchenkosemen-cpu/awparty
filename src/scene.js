@@ -417,7 +417,7 @@ class MainScene extends Phaser.Scene {
                 const by = clamp(py, 0, C.ARENA_HEIGHT);
                 const boss2 = new Enemy(this, bx, by, 'boss2');
                 boss2.makeBoss2('boss2');
-                if (s.isHardcoreMode) boss2.speed *= 1.5;
+                if (s.isHardcoreMode) { boss2.speed *= 1.5; boss2.hp *= 2; boss2.maxHp *= 2; }
                 this.enemies.push(boss2);
                 this.phase2BossSpawned = true;
             }
@@ -630,7 +630,13 @@ class MainScene extends Phaser.Scene {
 
         // HUD
         let bossExists = false, bossHpPct = 0;
-        for (const e of this.enemies) { if (e.isBoss) { bossExists = true; bossHpPct = Math.max(0, e.hp / e.maxHp); break; } }
+        for (const e of this.enemies) {
+            if (e.isBoss) {
+                bossExists = true; bossHpPct = Math.max(0, e.hp / e.maxHp);
+                this.hud.bossName.setText(e.isBoss2 ? 'BASS DROP' : 'THE OVERSEER');
+                break;
+            }
+        }
         this.hud.update(p, s.totalCoins, bossExists, bossHpPct, formatTime(this.survivalTimer),
             this.runUpgradeLevels, this.equippedAbilities, this.abilityCooldowns, this.abilityMaxCooldowns);
 
