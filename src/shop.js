@@ -14,7 +14,7 @@ const NODE_TITLES = [
 ];
 const NODE_DESCS = [
     ['Attack power +1', '+5% crit chance', 'Every 8th shot +1'],
-    ['Max HP +1', 'Heal 1 HP over time', 'Reduce damage -1'],
+    ['Max HP +1', 'Heal 1 HP over time', 'Reduce dmg; MAX: immortal'],
     ['Move speed +10', 'Unlock/upgrade dash', 'Pickup radius +100'],
 ];
 const BRANCH_NAMES = ['ATTACK', 'SURVIVAL', 'MOBILITY'];

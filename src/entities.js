@@ -117,6 +117,7 @@ class Player {
     gainXP(amount) { this.currentXP += amount; }
 
     takeDamage(amount) {
+        if (this.armor >= 2) return; // макс. прокачка щита (ARMOR 2/2) = бессмертие
         if (this.iFrames <= 0 && !this.isDashing && !this.isInvincible) {
             if (this.ironSkinCharges > 0) { this.ironSkinCharges--; this.iFrames = 0.3; return; }
             this.hp -= Math.max(0, amount - this.armor);
