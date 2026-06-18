@@ -22,6 +22,9 @@ const C = {
     // --- FPS limit options (Game.cpp constructor) ---
     FPS_LIMITS: [30, 60, 120, 240, 0],
 
+    // Множитель монет в hardcore-режиме (награда за повышенную сложность).
+    HARDCORE_COIN_MULT: 1.5,
+
     // Asset base path (assets live in the repo root so it's self-contained)
     ASSET_PATH: 'assets/',
 };

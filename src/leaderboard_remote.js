@@ -13,12 +13,13 @@ const RemoteLeaderboard = {
         };
     },
 
-    // Топ N по времени (desc). cb(entries|null) — null при ошибке/оффлайне.
-    // entries: [{ name, time, day, month, year }] (дата из created_at).
-    fetchTop(limit, cb) {
+    // Топ N по времени (desc) для режима mode ('normal'|'hardcore').
+    // cb(entries|null) — null при ошибке/оффлайне. entries: [{ name, time, day, month, year }].
+    fetchTop(limit, mode, cb) {
         if (!this.configured()) { cb(null); return; }
         const url = SUPABASE_URL + '/rest/v1/leaderboard'
-            + '?select=name,time,created_at&order=time.desc&limit=' + limit;
+            + '?select=name,time,created_at&mode=eq.' + encodeURIComponent(mode || 'normal')
+            + '&order=time.desc&limit=' + limit;
         fetch(url, { headers: this._headers() })
             .then(r => r.ok ? r.json() : Promise.reject(r.status))
             .then(rows => {
@@ -45,13 +46,13 @@ const RemoteLeaderboard = {
             .catch(() => cb(null));
     },
 
-    // Отправить результат через RPC submit_score: одна запись на игрока, хранит лучшее время.
-    submit(name, time, cb) {
+    // Отправить результат через RPC submit_score: одна запись на игрока в режиме mode, хранит лучшее время.
+    submit(name, time, mode, cb) {
         if (!this.configured()) { if (cb) cb(false); return; }
         fetch(SUPABASE_URL + '/rest/v1/rpc/submit_score', {
             method: 'POST',
             headers: Object.assign(this._headers(), { 'Prefer': 'return=minimal' }),
-            body: JSON.stringify({ p_name: name, p_time: time }),
+            body: JSON.stringify({ p_name: name, p_time: time, p_mode: mode || 'normal' }),
         })
             .then(r => { if (cb) cb(r.ok); })
             .catch(() => { if (cb) cb(false); });

@@ -3,7 +3,8 @@
 // Поля и значения по умолчанию совпадают с C++.
 
 const SAVE_KEY = 'awparty_save';
-const LB_KEY = 'awparty_leaderboard';
+const LB_KEY = 'awparty_leaderboard';        // обычный режим
+const LB_KEY_HC = 'awparty_leaderboard_hc';  // hardcore
 
 const SaveSystem = {
     // Значения по умолчанию из Game::loadGameData
@@ -92,12 +93,14 @@ const SaveSystem = {
         try { localStorage.setItem(SAVE_KEY, JSON.stringify(blob)); } catch (e) {}
     },
 
-    // Таблица рекордов: массив из 10 записей { name, time, day, month, year }
-    loadLeaderboard() {
+    // Таблица рекордов: массив из 10 записей { name, time, day, month, year }.
+    // hardcore=true — отдельная таблица для хард-режима.
+    loadLeaderboard(hardcore) {
+        const key = hardcore ? LB_KEY_HC : LB_KEY;
         const empty = [];
         for (let i = 0; i < 10; i++) empty.push({ name: '', time: 0, day: 0, month: 0, year: 0 });
         let raw = null;
-        try { raw = localStorage.getItem(LB_KEY); } catch (e) { raw = null; }
+        try { raw = localStorage.getItem(key); } catch (e) { raw = null; }
         if (!raw) return empty;
         try {
             const arr = JSON.parse(raw);
@@ -107,7 +110,8 @@ const SaveSystem = {
         } catch (e) { return empty; }
     },
 
-    saveLeaderboard(lb) {
-        try { localStorage.setItem(LB_KEY, JSON.stringify(lb)); } catch (e) {}
+    saveLeaderboard(lb, hardcore) {
+        const key = hardcore ? LB_KEY_HC : LB_KEY;
+        try { localStorage.setItem(key, JSON.stringify(lb)); } catch (e) {}
     },
 };

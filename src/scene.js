@@ -20,7 +20,9 @@ class MainScene extends Phaser.Scene {
     create() {
         // Сейв
         this.save = SaveSystem.load();
-        this.leaderboard = SaveSystem.loadLeaderboard();
+        // Две таблицы рекордов: обычная и hardcore. lbView — какая сейчас показывается.
+        this.leaderboards = { normal: SaveSystem.loadLeaderboard(false), hardcore: SaveSystem.loadLeaderboard(true) };
+        this.lbView = 'normal';
 
         // Слои: мир и интерфейс
         this.worldLayer = this.add.layer();
@@ -99,6 +101,7 @@ class MainScene extends Phaser.Scene {
 
         // Артефакт-аккумуляторы / реген
         this.bloodPactHealAcc = 0;
+        this.coinCarry = 0; // дробный остаток множителя монет (hardcore)
         this.regenTimer = 0;
         this.shotsFired = 0;
 
@@ -148,8 +151,9 @@ class MainScene extends Phaser.Scene {
         this.updateCursor();
         this.audio.playMusic(this.audio.musicForState(this.currentState));
 
-        // Подтянуть общий топ заранее, чтобы проверка рекорда шла против облака.
-        this._refreshRemoteLeaderboard();
+        // Подтянуть оба общих топа заранее, чтобы проверка рекорда шла против облака.
+        this._refreshRemoteLeaderboard('normal');
+        this._refreshRemoteLeaderboard('hardcore');
     }
 
     // ===================== ХЕЛПЕРЫ =====================
@@ -241,10 +245,11 @@ class MainScene extends Phaser.Scene {
         p.baseCritChance = 0.03 + s.permCritChance * 0.05;
         p.critChance = p.baseCritChance;
         p.armor = s.permArmor;
-        p.pickupRadius = ((s.permActiveArtifacts >> 6) & 1) ? 99999 : 100 + s.permMagnet * 100;
+        p.pickupRadius = ((s.permActiveArtifacts >> 6) & 1) ? 99999 : 50 + s.permMagnet * 50;
         p.ironSkinCharges = ((s.permActiveArtifacts >> 5) & 1) ? 3 : 0;
         p.soulLeechCritBonus = 0;
         this.bloodPactHealAcc = 0;
+        this.coinCarry = 0;
 
         if ((s.permActiveArtifacts >> 1) & 1) { p.maxHp = Math.max(1, p.maxHp - 2); p.hp = p.maxHp; }
 
@@ -306,8 +311,8 @@ class MainScene extends Phaser.Scene {
             const ducked = (ns === GameState.PAUSED || ns === GameState.LEVEL_UP || ns === GameState.ABILITY_SELECT);
             this.audio.setDuck(ducked ? 0.5 : 1);
         }
-        // При открытии таблицы — тянем свежий общий топ из облака.
-        if (ns === GameState.LEADERBOARD) this._refreshRemoteLeaderboard();
+        // При открытии таблицы — тянем свежий общий топ показываемого режима.
+        if (ns === GameState.LEADERBOARD) this._refreshRemoteLeaderboard(this.lbView);
     }
 
     // Кастомный курсор канваса (порт setMouseCursor: прицел в игре, стрелка в меню)
@@ -434,7 +439,7 @@ class MainScene extends Phaser.Scene {
             const p3 = this.gamePhase === GamePhase.PHASE_3;
             const spawnTime = p3 ? this.phase3Timer : (p2 ? this.phase2Timer : this.survivalTimer);
             this.spawner.update(this, dt, spawnTime, C.ARENA_WIDTH, C.ARENA_HEIGHT, px, py, this.enemies,
-                s.isHardcoreMode, 'enemy', 'enemyV', p2, this.phase2Timer, p3);
+                s.isHardcoreMode, 'enemy', 'enemyV', p2, this.phase2Timer, p3, this.activeStep);
         }
 
         // Стрельба (только когда игрок стоит)
@@ -556,10 +561,17 @@ class MainScene extends Phaser.Scene {
         }
         this._filterRelease(this.gems, 'gem', g => g.isCollected);
 
-        // Монеты
+        // Монеты (в hardcore — множитель; дробный остаток копится, чтобы totalCoins был целым)
+        const coinReward = s.isHardcoreMode ? C.HARDCORE_COIN_MULT : 1;
         for (const c of this.coins) {
             c.update(dt, px, py, p.pickupRadius);
-            if (distSq(c.sprite.x, c.sprite.y, px, py) < 1600) { c.isCollected = true; s.totalCoins += 1; }
+            if (distSq(c.sprite.x, c.sprite.y, px, py) < 1600) {
+                c.isCollected = true;
+                this.coinCarry += coinReward;
+                const whole = Math.floor(this.coinCarry);
+                s.totalCoins += whole;
+                this.coinCarry -= whole;
+            }
         }
         this._filterRelease(this.coins, 'coin', c => c.isCollected);
 
@@ -634,11 +646,14 @@ class MainScene extends Phaser.Scene {
 
     triggerShake(dur, mag) { this.cameras.main.shake(dur * 1000, mag / C.VIEW_WIDTH, true); }
 
+    // Режим текущего забега: в какую таблицу идёт результат.
+    _runMode() { return this.save.isHardcoreMode ? 'hardcore' : 'normal'; }
+
     onPlayerDeath() {
         this.isGameOver = true;
         this.audio.play('sfx_player_death', { volume: 0.9 });
         this.saveGame();
-        if (this.qualifiesForLeaderboard(this.survivalTimer)) {
+        if (this.qualifiesForLeaderboard(this.survivalTimer, this._runMode())) {
             if (this.save.playerName) {
                 // Ник уже задан — молча отправляем лучший результат, показываем Game Over.
                 this._submitScore(this.save.playerName, false);
@@ -654,17 +669,19 @@ class MainScene extends Phaser.Scene {
         }
     }
 
-    // Записать результат. showBoard=true — открыть таблицу с подсветкой; false — молча.
+    // Записать результат в таблицу режима забега. showBoard=true — открыть её с подсветкой.
     _submitScore(name, showBoard) {
         name = (name || '').trim() || 'Anonymous';
         if (name !== 'Anonymous') { this.save.playerName = name; this.saveGame(); } // запоминаем ник
-        this.tryAddToLeaderboard(this.survivalTimer, name); // локальный кэш/фолбэк (дедуп по имени)
-        // Общий рейтинг: одна запись на игрока, хранит лучшее время (см. RPC submit_score).
-        RemoteLeaderboard.submit(name, this.survivalTimer, () => {
-            if (showBoard && this.currentState === GameState.LEADERBOARD) this._refreshRemoteLeaderboard();
+        const mode = this._runMode();
+        this.tryAddToLeaderboard(this.survivalTimer, name, mode); // локальный кэш/фолбэк (дедуп по имени)
+        // Общий рейтинг: одна запись на игрока в этом режиме, хранит лучшее время.
+        RemoteLeaderboard.submit(name, this.survivalTimer, mode, () => {
+            if (showBoard && this.currentState === GameState.LEADERBOARD) this._refreshRemoteLeaderboard(mode);
         });
         if (showBoard) {
             this.leaderboardFromMenu = false;
+            this.lbView = mode; // показываем таблицу того режима, в котором играли
             this._pendingHighlight = name;
             this.audio.play('sfx_menu_click');
             this.setState(GameState.LEADERBOARD);
@@ -676,8 +693,9 @@ class MainScene extends Phaser.Scene {
         if (!typed) { this._nameError = 'Enter a name'; this.rebuildMenu(); return; }
         // Ник должен быть свободен (одна запись на игрока).
         RemoteLeaderboard.nameTaken(typed, (taken) => {
-            // null = оффлайн/без конфига: проверяем по локальной таблице.
-            const isTaken = (taken === null) ? this.leaderboard.some(e => e.name === typed) : taken;
+            // null = оффлайн/без конфига: проверяем по обеим локальным таблицам.
+            const localTaken = this.leaderboards.normal.some(e => e.name === typed) || this.leaderboards.hardcore.some(e => e.name === typed);
+            const isTaken = (taken === null) ? localTaken : taken;
             if (isTaken) {
                 this._nameError = 'Name is taken';
                 if (this.currentState === GameState.NAME_INPUT) this.rebuildMenu();
@@ -747,8 +765,8 @@ class MainScene extends Phaser.Scene {
             const ex = e.sprite.x, ey = e.sprite.y;
             if (e.type === EnemyType.GOBLIN) {
                 for (let i = 0; i < 30; i++) this.particles.push(this.spawnParticle(ex, ey, randInt(2) === 0 ? rgb(180, 0, 255) : rgb(255, 0, 200)));
-                for (let k = 0; k < 3; k++) this.gems.push(this.spawnGem(ex + randInt(40) - 20, ey + randInt(40) - 20));
-                this.coins.push(this.spawnCoin(ex, ey));
+                for (let k = 0; k < 3; k++) this.gems.push(this.spawnGem(ex - 24 + randInt(40) - 20, ey + randInt(40) - 20));
+                this.coins.push(this.spawnCoin(ex + 38, ey));
                 if (randInt(100) < 35) this.vinyls.push(this.spawnVinyl(ex, ey));
                 continue;
             }
@@ -777,8 +795,10 @@ class MainScene extends Phaser.Scene {
                 this.bossSouls.push(new BossSoul(this, ex, ey, 1));
                 if (this.gamePhase === GamePhase.PHASE_1) this.gamePhase = GamePhase.CLEARING;
             } else {
-                this.gems.push(this.spawnGem(ex, ey));
-                if (randInt(100) < 30) this.coins.push(this.spawnCoin(ex, ey));
+                // Гем и монета разнесены в стороны, чтобы опыт не лежал под монетой.
+                const off = 24;
+                this.gems.push(this.spawnGem(ex - off, ey));
+                if (randInt(100) < 30) this.coins.push(this.spawnCoin(ex + off, ey));
                 if (randInt(100) < 2) this.vinyls.push(this.spawnVinyl(ex, ey));
             }
         }
@@ -849,7 +869,7 @@ class MainScene extends Phaser.Scene {
         if (id === 0 && p.shootCooldown > 0.15) p.shootCooldown -= 0.05;
         else if (id === 1) p.attackDamage += 1;
         else if (id === 2 && p.speed < 400) p.speed += 20;
-        else if (id === 3 && p.pickupRadius < 600) p.pickupRadius += 100;
+        else if (id === 3 && p.pickupRadius < 600) p.pickupRadius += 50;
         else if (id === 4) { p.maxHp += 1; p.hp = p.maxHp; }
         p.lastUpgradeId = id;
         p.messageTimer = 2.0;
@@ -859,44 +879,60 @@ class MainScene extends Phaser.Scene {
     }
 
     // ===================== ТАБЛИЦА РЕКОРДОВ =====================
-    // Подтянуть общий топ-10 из Supabase (если настроен) и обновить экран.
-    _refreshRemoteLeaderboard() {
+    // Подтянуть общий топ-10 режима mode из Supabase и обновить экран, если он сейчас показан.
+    _refreshRemoteLeaderboard(mode) {
+        mode = mode || this.lbView;
         if (!RemoteLeaderboard.configured()) return;
-        RemoteLeaderboard.fetchTop(10, (rows) => {
+        RemoteLeaderboard.fetchTop(10, mode, (rows) => {
             if (!rows) return; // ошибка/оффлайн — оставляем локальную таблицу
             const lb = [];
             for (let i = 0; i < 10; i++) lb.push(rows[i] || { name: '', time: 0, day: 0, month: 0, year: 0 });
-            this.leaderboard = lb;
-            this.leaderboardNewEntryIndex = -1;
-            const h = this._pendingHighlight; // имя игрока (одна запись на игрока)
-            if (h) for (let i = 0; i < 10; i++) {
-                if (lb[i].name === h) { this.leaderboardNewEntryIndex = i; break; }
+            this.leaderboards[mode] = lb;
+            if (this.lbView === mode) {
+                this.leaderboardNewEntryIndex = -1;
+                const h = this._pendingHighlight; // имя игрока (одна запись на игрока)
+                if (h) for (let i = 0; i < 10; i++) {
+                    if (lb[i].name === h) { this.leaderboardNewEntryIndex = i; break; }
+                }
+                if (this.currentState === GameState.LEADERBOARD) this.rebuildMenu();
             }
-            if (this.currentState === GameState.LEADERBOARD) this.rebuildMenu();
         });
     }
 
-    qualifiesForLeaderboard(time) {
-        for (let i = 0; i < 10; i++) if (this.leaderboard[i].time === 0 || time > this.leaderboard[i].time) return true;
+    // Переключить показываемую таблицу (normal/hardcore) и подтянуть её.
+    _setLbView(mode) {
+        if (this.lbView === mode) return;
+        this.lbView = mode;
+        this._pendingHighlight = null;
+        this.leaderboardNewEntryIndex = -1;
+        this.audio.play('sfx_menu_click');
+        this._refreshRemoteLeaderboard(mode);
+        if (this.currentState === GameState.LEADERBOARD) this.rebuildMenu();
+    }
+
+    qualifiesForLeaderboard(time, mode) {
+        const lb = this.leaderboards[mode || 'normal'];
+        for (let i = 0; i < 10; i++) if (lb[i].time === 0 || time > lb[i].time) return true;
         return false;
     }
-    tryAddToLeaderboard(time, name) {
+    tryAddToLeaderboard(time, name, mode) {
+        mode = mode || 'normal';
         let n = name || 'Anonymous';
         if (n.length > 23) n = n.slice(0, 23);
         const d = new Date();
         const entry = { name: n, time, day: d.getDate(), month: d.getMonth() + 1, year: d.getFullYear() };
         // Действующие записи без пустышек.
-        let list = this.leaderboard.filter(e => e.time > 0);
+        let list = this.leaderboards[mode].filter(e => e.time > 0);
         // Одна запись на игрока — оставляем лучшее время.
         const existing = list.find(e => e.name === n);
         if (!existing) list.push(entry);
         else if (time > existing.time) { list = list.filter(e => e.name !== n); list.push(entry); }
         list.sort((a, b) => b.time - a.time);
         list = list.slice(0, 10);
-        this.leaderboardNewEntryIndex = list.findIndex(e => e.name === n);
+        if (this.lbView === mode) this.leaderboardNewEntryIndex = list.findIndex(e => e.name === n);
         while (list.length < 10) list.push({ name: '', time: 0, day: 0, month: 0, year: 0 });
-        this.leaderboard = list;
-        SaveSystem.saveLeaderboard(this.leaderboard);
+        this.leaderboards[mode] = list;
+        SaveSystem.saveLeaderboard(list, mode === 'hardcore');
     }
 
     // ===================== РЕНДЕР МИРА (FX) =====================
@@ -1086,13 +1122,17 @@ class MainScene extends Phaser.Scene {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x000000, 160 / 255).setOrigin(0, 0));
         this._mText(W / 2, 50, 'RECORDS', 100, '#ffd700', 0.5, 0, '#b40050', 5);
-        const rowY0 = 195, rowH = 56;
+        // Заголовок режима + переключатель.
+        const hc = this.lbView === 'hardcore';
+        this._mText(W / 2, 150, '<  ' + (hc ? 'HARDCORE' : 'NORMAL') + '  >', 44, hc ? '#ff5050' : '#00ffc8', 0.5, 0.5, '#000', 3);
+        const board = this.leaderboards[this.lbView];
+        const rowY0 = 235, rowH = 54;
         const colX = [W * 0.10, W * 0.20, W * 0.58, W * 0.78];
         const hdrs = ['#', 'NAME', 'TIME', 'DATE'];
-        for (let i = 0; i < 4; i++) this._mText(colX[i], rowY0 - 40, hdrs[i], 26, '#00ffc8', 0, 0);
+        for (let i = 0; i < 4; i++) this._mText(colX[i], rowY0 - 38, hdrs[i], 26, '#00ffc8', 0, 0);
         for (let i = 0; i < 10; i++) {
             const y = rowY0 + i * rowH;
-            const e = this.leaderboard[i];
+            const e = board[i];
             const isNew = i === this.leaderboardNewEntryIndex;
             const col = e.time > 0 ? (isNew ? '#ffd700' : '#dcd7eb') : '#504b5f';
             this._mText(colX[0], y, '' + (i + 1), 30, col, 0, 0);
@@ -1103,7 +1143,8 @@ class MainScene extends Phaser.Scene {
                 this._mText(colX[3], y, pad(e.day) + '.' + pad(e.month) + '.' + e.year, 30, col, 0, 0);
             } else this._mText(colX[1], y, '---', 30, col, 0, 0);
         }
-        this._mText(W / 2, H * 0.9, '[ ESC / ENTER  -  Back ]', 36, '#00ffc8', 0.5, 0);
+        this._mText(W / 2, H * 0.86, '<  /  >   -   Normal / Hardcore', 30, '#7d78a0', 0.5, 0, '#000', 2);
+        this._mText(W / 2, H * 0.92, '[ ESC / ENTER  -  Back ]', 36, '#00ffc8', 0.5, 0);
     }
 
     _buildPause() {
@@ -1315,7 +1356,7 @@ class MainScene extends Phaser.Scene {
         this.audio.play('sfx_menu_click');
         const i = this.selectedMenuIndex;
         if (i === 0) this.setState(GameState.LOBBY);
-        else if (i === 1) { this.leaderboardFromMenu = true; this.leaderboardNewEntryIndex = -1; this._pendingHighlight = null; this.setState(GameState.LEADERBOARD); }
+        else if (i === 1) { this.leaderboardFromMenu = true; this.leaderboardNewEntryIndex = -1; this._pendingHighlight = null; this.lbView = this.save.isHardcoreMode ? 'hardcore' : 'normal'; this.setState(GameState.LEADERBOARD); }
         else if (i === 2) this.setState(GameState.SETTINGS);
     }
     _lobbyActivate() {
@@ -1402,6 +1443,8 @@ class MainScene extends Phaser.Scene {
                 }
             }
         } else if (st === GameState.LEADERBOARD) {
+            if (left) this._setLbView('normal');
+            if (right) this._setLbView('hardcore');
             if (esc || code === 'Enter') this.setState(this.leaderboardFromMenu ? GameState.MENU : GameState.LOBBY);
         } else if (st === GameState.NAME_INPUT) {
             if (code === 'Backspace') { this.nameInput = this.nameInput.slice(0, -1); this._nameError = ''; this.rebuildMenu(); if (e.preventDefault) e.preventDefault(); }
@@ -1414,7 +1457,7 @@ class MainScene extends Phaser.Scene {
             if (this.isGameOver) {
                 if (code === 'KeyR') { this.saveGame(); this.resetGame(); this.rebuildMenu(); }
                 if (code === 'KeyQ') { this.saveGame(); this.setState(GameState.LOBBY); }
-                if (code === 'KeyL') { this.leaderboardFromMenu = false; this._pendingHighlight = null; this.setState(GameState.LEADERBOARD); }
+                if (code === 'KeyL') { this.leaderboardFromMenu = false; this._pendingHighlight = null; this.lbView = this.save.isHardcoreMode ? 'hardcore' : 'normal'; this.setState(GameState.LEADERBOARD); }
             } else {
                 if (esc) { this.selectedPauseIndex = 0; this.setState(GameState.PAUSED); }
                 if (code === 'KeyQ') this.activateAbility(0);
