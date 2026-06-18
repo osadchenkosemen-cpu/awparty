@@ -115,6 +115,7 @@ class MainScene extends Phaser.Scene {
         this.leaderboardFromMenu = false;
         this.leaderboardNewEntryIndex = -1;
         this.nameInput = ''; // ввод ника на экране NAME_INPUT
+        this._pendingHighlight = null; // {name,time} — чью строку подсветить после отправки
         this.levelUpIds = [0, 1, 2];
         this.cheatBuffer = '';
         this.cheatMessage = '';
@@ -145,6 +146,9 @@ class MainScene extends Phaser.Scene {
         this.rebuildMenu();
         this.updateCursor();
         this.audio.playMusic(this.audio.musicForState(this.currentState));
+
+        // Подтянуть общий топ заранее, чтобы проверка рекорда шла против облака.
+        this._refreshRemoteLeaderboard();
     }
 
     // ===================== ХЕЛПЕРЫ =====================
@@ -301,6 +305,8 @@ class MainScene extends Phaser.Scene {
             const ducked = (ns === GameState.PAUSED || ns === GameState.LEVEL_UP || ns === GameState.ABILITY_SELECT);
             this.audio.setDuck(ducked ? 0.5 : 1);
         }
+        // При открытии таблицы — тянем свежий общий топ из облака.
+        if (ns === GameState.LEADERBOARD) this._refreshRemoteLeaderboard();
     }
 
     // Кастомный курсор канваса (порт setMouseCursor: прицел в игре, стрелка в меню)
@@ -633,7 +639,7 @@ class MainScene extends Phaser.Scene {
         this.saveGame();
         // Попал в топ-10 — даём ввести имя; иначе обычный экран Game Over.
         if (this.qualifiesForLeaderboard(this.survivalTimer)) {
-            this.nameInput = '';
+            this.nameInput = this.save.playerName || ''; // подставляем прошлый ник
             this.setState(GameState.NAME_INPUT);
         } else {
             this.rebuildMenu();
@@ -642,10 +648,18 @@ class MainScene extends Phaser.Scene {
 
     // Подтвердить ник и показать таблицу рекордов с подсветкой новой записи.
     _confirmNameInput() {
-        const name = this.nameInput.trim() || 'Anonymous';
+        const typed = this.nameInput.trim();
+        const name = typed || 'Anonymous';
+        if (typed) { this.save.playerName = typed; this.saveGame(); } // запоминаем ник
+        // Локальная таблица — офлайн-кэш/фолбэк.
         this.tryAddToLeaderboard(this.survivalTimer, name);
         this.leaderboardFromMenu = false;
         this.audio.play('sfx_menu_click');
+        // Отправляем в общий рейтинг; после успеха перечитываем и подсвечиваем свою строку.
+        this._pendingHighlight = { name: name, time: this.survivalTimer };
+        RemoteLeaderboard.submit(name, this.survivalTimer, () => {
+            if (this.currentState === GameState.LEADERBOARD) this._refreshRemoteLeaderboard();
+        });
         this.setState(GameState.LEADERBOARD);
     }
 
@@ -821,6 +835,23 @@ class MainScene extends Phaser.Scene {
     }
 
     // ===================== ТАБЛИЦА РЕКОРДОВ =====================
+    // Подтянуть общий топ-10 из Supabase (если настроен) и обновить экран.
+    _refreshRemoteLeaderboard() {
+        if (!RemoteLeaderboard.configured()) return;
+        RemoteLeaderboard.fetchTop(10, (rows) => {
+            if (!rows) return; // ошибка/оффлайн — оставляем локальную таблицу
+            const lb = [];
+            for (let i = 0; i < 10; i++) lb.push(rows[i] || { name: '', time: 0, day: 0, month: 0, year: 0 });
+            this.leaderboard = lb;
+            this.leaderboardNewEntryIndex = -1;
+            const h = this._pendingHighlight;
+            if (h) for (let i = 0; i < 10; i++) {
+                if (lb[i].name === h.name && Math.abs(lb[i].time - h.time) < 0.05) { this.leaderboardNewEntryIndex = i; break; }
+            }
+            if (this.currentState === GameState.LEADERBOARD) this.rebuildMenu();
+        });
+    }
+
     qualifiesForLeaderboard(time) {
         for (let i = 0; i < 10; i++) if (this.leaderboard[i].time === 0 || time > this.leaderboard[i].time) return true;
         return false;
@@ -1252,7 +1283,7 @@ class MainScene extends Phaser.Scene {
         this.audio.play('sfx_menu_click');
         const i = this.selectedMenuIndex;
         if (i === 0) this.setState(GameState.LOBBY);
-        else if (i === 1) { this.leaderboardFromMenu = true; this.leaderboardNewEntryIndex = -1; this.setState(GameState.LEADERBOARD); }
+        else if (i === 1) { this.leaderboardFromMenu = true; this.leaderboardNewEntryIndex = -1; this._pendingHighlight = null; this.setState(GameState.LEADERBOARD); }
         else if (i === 2) this.setState(GameState.SETTINGS);
     }
     _lobbyActivate() {
@@ -1351,7 +1382,7 @@ class MainScene extends Phaser.Scene {
             if (this.isGameOver) {
                 if (code === 'KeyR') { this.saveGame(); this.resetGame(); this.rebuildMenu(); }
                 if (code === 'KeyQ') { this.saveGame(); this.setState(GameState.LOBBY); }
-                if (code === 'KeyL') { this.leaderboardFromMenu = false; this.setState(GameState.LEADERBOARD); }
+                if (code === 'KeyL') { this.leaderboardFromMenu = false; this._pendingHighlight = null; this.setState(GameState.LEADERBOARD); }
             } else {
                 if (esc) { this.selectedPauseIndex = 0; this.setState(GameState.PAUSED); }
                 if (code === 'KeyQ') this.activateAbility(0);

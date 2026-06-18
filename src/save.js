@@ -15,6 +15,7 @@ const SaveSystem = {
             isFullscreen: true,
             soundVolume: 40,    // громкость музыки, 0..100
             effectsVolume: 60,  // громкость SFX, 0..100
+            playerName: '',     // последний введённый ник (подставляется на экране рекорда)
             permMaxHp: 3,
             permDamage: 1,
             permSpeed: 220,
@@ -41,6 +42,8 @@ const SaveSystem = {
         if (b.currentFpsIndex < 0 || b.currentFpsIndex > 4) b.currentFpsIndex = 1;
         if (!(b.soundVolume >= 0 && b.soundVolume <= 100)) b.soundVolume = 40;
         if (!(b.effectsVolume >= 0 && b.effectsVolume <= 100)) b.effectsVolume = 60;
+        if (typeof b.playerName !== 'string') b.playerName = '';
+        else b.playerName = b.playerName.slice(0, 20);
         if (b.permMaxHp < 3) b.permMaxHp = 3;
         if (b.permDamage < 1) b.permDamage = 1;
         if (b.permSpeed < 220) b.permSpeed = 220;
@@ -73,6 +76,7 @@ const SaveSystem = {
             isFullscreen: data.isFullscreen,
             soundVolume: data.soundVolume,
             effectsVolume: data.effectsVolume,
+            playerName: data.playerName,
             permMaxHp: data.permMaxHp,
             permDamage: data.permDamage,
             permSpeed: data.permSpeed,
