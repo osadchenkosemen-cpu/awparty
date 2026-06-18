@@ -34,13 +34,13 @@ const RemoteLeaderboard = {
             .catch(() => cb(null));
     },
 
-    // Отправить результат. cb(ok).
+    // Отправить результат через RPC submit_score: одна запись на игрока, хранит лучшее время.
     submit(name, time, cb) {
         if (!this.configured()) { if (cb) cb(false); return; }
-        fetch(SUPABASE_URL + '/rest/v1/leaderboard', {
+        fetch(SUPABASE_URL + '/rest/v1/rpc/submit_score', {
             method: 'POST',
             headers: Object.assign(this._headers(), { 'Prefer': 'return=minimal' }),
-            body: JSON.stringify({ name: name, time: time }),
+            body: JSON.stringify({ p_name: name, p_time: time }),
         })
             .then(r => { if (cb) cb(r.ok); })
             .catch(() => { if (cb) cb(false); });

@@ -115,7 +115,7 @@ class MainScene extends Phaser.Scene {
         this.leaderboardFromMenu = false;
         this.leaderboardNewEntryIndex = -1;
         this.nameInput = ''; // ввод ника на экране NAME_INPUT
-        this._pendingHighlight = null; // {name,time} — чью строку подсветить после отправки
+        this._pendingHighlight = null; // имя игрока, чью строку подсветить после отправки
         this.levelUpIds = [0, 1, 2];
         this.cheatBuffer = '';
         this.cheatMessage = '';
@@ -637,31 +637,39 @@ class MainScene extends Phaser.Scene {
         this.isGameOver = true;
         this.audio.play('sfx_player_death', { volume: 0.9 });
         this.saveGame();
-        // Попал в топ-10 — даём ввести имя; иначе обычный экран Game Over.
         if (this.qualifiesForLeaderboard(this.survivalTimer)) {
-            this.nameInput = this.save.playerName || ''; // подставляем прошлый ник
-            this.setState(GameState.NAME_INPUT);
+            if (this.save.playerName) {
+                // Ник уже задан — молча отправляем лучший результат, показываем Game Over.
+                this._submitScore(this.save.playerName, false);
+                this.rebuildMenu();
+            } else {
+                // Первый раз — просим ввести ник.
+                this.nameInput = '';
+                this.setState(GameState.NAME_INPUT);
+            }
         } else {
             this.rebuildMenu();
         }
     }
 
-    // Подтвердить ник и показать таблицу рекордов с подсветкой новой записи.
-    _confirmNameInput() {
-        const typed = this.nameInput.trim();
-        const name = typed || 'Anonymous';
-        if (typed) { this.save.playerName = typed; this.saveGame(); } // запоминаем ник
-        // Локальная таблица — офлайн-кэш/фолбэк.
-        this.tryAddToLeaderboard(this.survivalTimer, name);
-        this.leaderboardFromMenu = false;
-        this.audio.play('sfx_menu_click');
-        // Отправляем в общий рейтинг; после успеха перечитываем и подсвечиваем свою строку.
-        this._pendingHighlight = { name: name, time: this.survivalTimer };
+    // Записать результат. showBoard=true — открыть таблицу с подсветкой; false — молча.
+    _submitScore(name, showBoard) {
+        name = (name || '').trim() || 'Anonymous';
+        if (name !== 'Anonymous') { this.save.playerName = name; this.saveGame(); } // запоминаем ник
+        this.tryAddToLeaderboard(this.survivalTimer, name); // локальный кэш/фолбэк (дедуп по имени)
+        // Общий рейтинг: одна запись на игрока, хранит лучшее время (см. RPC submit_score).
         RemoteLeaderboard.submit(name, this.survivalTimer, () => {
-            if (this.currentState === GameState.LEADERBOARD) this._refreshRemoteLeaderboard();
+            if (showBoard && this.currentState === GameState.LEADERBOARD) this._refreshRemoteLeaderboard();
         });
-        this.setState(GameState.LEADERBOARD);
+        if (showBoard) {
+            this.leaderboardFromMenu = false;
+            this._pendingHighlight = name;
+            this.audio.play('sfx_menu_click');
+            this.setState(GameState.LEADERBOARD);
+        }
     }
+
+    _confirmNameInput() { this._submitScore(this.nameInput, true); }
 
     // Сепарация врагов через сетку (Game::update)
     separateEnemies(px, py) {
@@ -844,9 +852,9 @@ class MainScene extends Phaser.Scene {
             for (let i = 0; i < 10; i++) lb.push(rows[i] || { name: '', time: 0, day: 0, month: 0, year: 0 });
             this.leaderboard = lb;
             this.leaderboardNewEntryIndex = -1;
-            const h = this._pendingHighlight;
+            const h = this._pendingHighlight; // имя игрока (одна запись на игрока)
             if (h) for (let i = 0; i < 10; i++) {
-                if (lb[i].name === h.name && Math.abs(lb[i].time - h.time) < 0.05) { this.leaderboardNewEntryIndex = i; break; }
+                if (lb[i].name === h) { this.leaderboardNewEntryIndex = i; break; }
             }
             if (this.currentState === GameState.LEADERBOARD) this.rebuildMenu();
         });
@@ -857,15 +865,21 @@ class MainScene extends Phaser.Scene {
         return false;
     }
     tryAddToLeaderboard(time, name) {
-        let at = -1;
-        for (let i = 0; i < 10; i++) if (this.leaderboard[i].time === 0 || time > this.leaderboard[i].time) { at = i; break; }
-        if (at < 0) return;
-        for (let i = 9; i > at; i--) this.leaderboard[i] = this.leaderboard[i - 1];
         let n = name || 'Anonymous';
         if (n.length > 23) n = n.slice(0, 23);
         const d = new Date();
-        this.leaderboard[at] = { name: n, time, day: d.getDate(), month: d.getMonth() + 1, year: d.getFullYear() };
-        this.leaderboardNewEntryIndex = at;
+        const entry = { name: n, time, day: d.getDate(), month: d.getMonth() + 1, year: d.getFullYear() };
+        // Действующие записи без пустышек.
+        let list = this.leaderboard.filter(e => e.time > 0);
+        // Одна запись на игрока — оставляем лучшее время.
+        const existing = list.find(e => e.name === n);
+        if (!existing) list.push(entry);
+        else if (time > existing.time) { list = list.filter(e => e.name !== n); list.push(entry); }
+        list.sort((a, b) => b.time - a.time);
+        list = list.slice(0, 10);
+        this.leaderboardNewEntryIndex = list.findIndex(e => e.name === n);
+        while (list.length < 10) list.push({ name: '', time: 0, day: 0, month: 0, year: 0 });
+        this.leaderboard = list;
         SaveSystem.saveLeaderboard(this.leaderboard);
     }
 
