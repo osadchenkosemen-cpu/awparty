@@ -761,8 +761,8 @@ class MainScene extends Phaser.Scene {
         for (const e of this.enemies) {
             if (e.hp > 0) continue;
             if ((s.permActiveArtifacts >> 3) & 1) {
-                // Жёсткий потолок 75%: крит остаётся шансом, а не гарантией каждый выстрел.
-                const cap = Math.min(0.75, p.baseCritChance * 10);
+                // +0.5% крита за килл, максимум +5% к базе (10 стаков).
+                const cap = p.baseCritChance + 0.05;
                 p.critChance = Math.min(cap, p.critChance + 0.005);
             }
             // BLOOD PACT: вампиризм за килл — 0.2 HP за убийство (копится до целого HP).

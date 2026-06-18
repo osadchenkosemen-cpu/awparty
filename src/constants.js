@@ -86,7 +86,7 @@ const ARTIFACTS = [
     { name: 'BLOOD PACT', desc: 'Kill heals 0.2 HP', cost: 800 },
     { name: 'GLASS CANNON', desc: '+30% dmg, Max HP -2', cost: 1000 },
     { name: 'ECHO CHAMBER', desc: 'Bullets ricochet off walls', cost: 1100 },
-    { name: 'SOUL LEECH', desc: '+0.5% crit/kill  (max 10x)', cost: 1400 },
+    { name: 'SOUL LEECH', desc: '+0.5% crit/kill  (max +5%)', cost: 1400 },
     { name: 'BERSERKER', desc: 'HP<=40%: dmg x1.5, no dash slow', cost: 1500 },
     { name: 'IRON SKIN', desc: 'First 3 hits/run blocked', cost: 1700 },
     { name: 'MAGNET CORE', desc: 'Infinite pickup range', cost: 5000 },
