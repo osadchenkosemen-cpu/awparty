@@ -6,6 +6,9 @@ class MainScene extends Phaser.Scene {
     // ===================== ЗАГРУЗКА =====================
     preload() {
         this.load.setPath(C.ASSET_PATH);
+        // Часть иконок магазина опциональна — глушим ошибку загрузки отсутствующих
+        // файлов, чтобы не засорять консоль 404-ми (карточка нарисуется без иконки).
+        this.load.on('loaderror', () => {});
         for (const [key, file] of TEXTURE_MANIFEST) this.load.image(key, file);
         // Кадры анимации игрока: panim_<dir><1..6>
         for (let d = 0; d < 4; d++) {

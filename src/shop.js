@@ -10,6 +10,10 @@ const ARTIFACT_COUNT = 7;
 // Тексты узлов/веток — в i18n.js (node_titles / node_descs / branch_names).
 const ARTIFACT_COLORS = [0xdc3c3c, 0xffa028, 0x50c8ff, 0xa03cdc, 0xff6428, 0xa0a0a0, 0x3cdca0];
 
+// Ключи иконок (см. TEXTURE_MANIFEST). Файлы опциональны — рендерятся, если есть.
+const ARTIFACT_ICONS = ['art_bloodpact', 'art_glasscannon', 'art_echo', 'art_soulleech', 'art_berserker', 'art_ironskin', 'art_magnetcore'];
+const NODE_ICONS = ['node_damage', 'node_crit', 'node_multishot', 'node_maxhp', 'node_regen', 'node_armor', 'node_speed', 'node_dash', 'node_magnet'];
+
 function branchColor(b) {
     if (b === 0) return 0xff5050;
     if (b === 1) return 0x50dc50;
@@ -202,54 +206,107 @@ class Shop {
         if (strokeW) r.setStrokeStyle(strokeW, strokeC);
         return this._add(r);
     }
-    _text(x, y, str, size, color, originX, originY) {
-        const t = this.scene.add.text(x, y, str, { fontFamily: FONT, fontSize: size + 'px', color: color });
+    _text(x, y, str, size, color, originX, originY, glow, wrapW) {
+        const style = { fontFamily: FONT, fontSize: size + 'px', color: color };
+        if (wrapW) style.wordWrap = { width: wrapW, useAdvancedWrap: true };
+        const t = this.scene.add.text(x, y, str, style);
         t.setOrigin(originX === undefined ? 0 : originX, originY === undefined ? 0 : originY);
+        if (glow) t.setShadow(0, 0, glow, 12, true, true); // неоновое свечение текста
         return this._add(t);
     }
     _hex(c) { return '#' + ('000000' + c.toString(16)).slice(-6); }
+
+    // --- графические хелперы (рисуют в общий this.g, чтобы текст/иконки были сверху) ---
+    _panel(x, y, w, h, rad, fill, fillA, stroke, strokeW) {
+        const g = this.g;
+        g.fillStyle(fill, fillA === undefined ? 1 : fillA);
+        g.fillRoundedRect(x, y, w, h, rad);
+        if (strokeW) { g.lineStyle(strokeW, stroke, 1); g.strokeRoundedRect(x, y, w, h, rad); }
+    }
+    // Мягкое наружное свечение рамки (несколько затухающих обводок).
+    _glow(x, y, w, h, rad, color) {
+        const g = this.g;
+        for (let i = 3; i >= 1; i--) {
+            g.lineStyle(2, color, 0.12 * (4 - i));
+            g.strokeRoundedRect(x - i * 3, y - i * 3, w + i * 6, h + i * 6, rad + i * 3);
+        }
+    }
+    // Иконка из атласа, если текстура загружена; иначе null (graceful fallback).
+    _icon(key, x, y, box, alpha) {
+        if (!key || !this.scene.textures.exists(key)) return null;
+        const sp = this.scene.add.sprite(x, y, key).setOrigin(0.5, 0.5);
+        sp.setScale(box / Math.max(sp.width, sp.height));
+        if (alpha !== undefined) sp.setAlpha(alpha);
+        return this._add(sp);
+    }
+    // Скруглённый прогресс-бар (уровень узла).
+    _bar(x, y, w, h, frac, color) {
+        const g = this.g;
+        g.fillStyle(0x080510, 1); g.fillRoundedRect(x, y, w, h, h / 2);
+        if (frac > 0) { g.fillStyle(color, 1); g.fillRoundedRect(x, y, Math.max(h, w * Math.min(1, frac)), h, h / 2); }
+    }
+
+    // Пилюля с монетами в правом верхнем углу.
+    _coinPill(rightX, cy, coins) {
+        const txt = '' + coins;
+        const w = 56 + txt.length * 17, h = 46, x = rightX - w, y = cy - h / 2;
+        this._panel(x, y, w, h, h / 2, 0x241636, 1, 0xffd24a, 2);
+        const coin = this._add(this.scene.add.sprite(x + 26, cy, 'coin').setOrigin(0.5, 0.5));
+        coin.setDisplaySize(28, 28);
+        this._text(x + 48, cy, txt, 24, '#ffe24a', 0, 0.5, '#a06400');
+    }
 
     redraw() {
         if (!this.visible) return;
         this._clear();
         const s = this.s;
 
-        this._rect(0, 0, 1920, 1080, 0x0a0514, 1);
-        this._text(960, 55, this.activeTab === 0 ? t('shop_skilltree') : t('shop_artifacts'), 52, '#c8c8ff', 0.5, 0.5);
-        this._text(1880, 20, t('shop_coins') + ': ' + s.totalCoins, 30, '#ffff00', 1, 0);
+        // Общий слой графики (фон + панели) — кладём первым, текст/иконки рисуются поверх.
+        const g = this._add(this.scene.add.graphics());
+        this.g = g;
+        g.fillGradientStyle(0x160b2c, 0x160b2c, 0x07040f, 0x07040f, 1);
+        g.fillRect(0, 0, 1920, 1080);
+
+        // Верхняя шапка
+        this._panel(0, 0, 1920, 96, 0, 0x190d30, 0.9);
+        g.lineStyle(2, 0x7a3cc8, 0.55); g.lineBetween(0, 96, 1920, 96);
+        this._text(960, 48, this.activeTab === 0 ? t('shop_skilltree') : t('shop_artifacts'), 50, '#e6d8ff', 0.5, 0.5, '#8a3cf0');
+        this._coinPill(1894, 48, s.totalCoins);
 
         // Вкладки
         const tabNames = [t('shop_skilltree'), t('shop_artifacts')];
-        for (let t = 0; t < 2; t++) {
-            const tr = this.tabRect(t);
-            const active = this.activeTab === t;
-            this._rect(tr.x, tr.y, tr.w, tr.h, active ? 0x321e50 : 0x140a23, 1, 2, active ? 0xc896ff : 0x503c6e);
-            this._text(tr.x + tr.w / 2, tr.y + tr.h / 2, tabNames[t], 22, active ? '#dcbeff' : '#7864a0', 0.5, 0.5);
+        for (let i = 0; i < 2; i++) {
+            const tr = this.tabRect(i), active = this.activeTab === i;
+            if (active) this._glow(tr.x, tr.y, tr.w, tr.h, 12, 0xc896ff);
+            this._panel(tr.x, tr.y, tr.w, tr.h, 12, active ? 0x3a1f66 : 0x150b28, 1, active ? 0xc896ff : 0x4a3568, active ? 3 : 2);
+            this._text(tr.x + tr.w / 2, tr.y + tr.h / 2, tabNames[i], 22, active ? '#ecdcff' : '#8a78b0', 0.5, 0.5);
         }
 
         if (this.activeTab === 0) this._renderSkillTree();
         else this._renderArtifacts();
 
         // Кнопка назад
-        const br = this.backRect();
-        this._rect(br.x, br.y, br.w, br.h, this.backHovered ? 0x502864 : 0x28143c, 1, 2, this.backHovered ? 0xffc8ff : 0x9664c8);
-        this._text(960, 870, t('shop_back'), 26, '#ffffff', 0.5, 0.5);
+        const br = this.backRect(), bh = this.backHovered;
+        if (bh) this._glow(br.x, br.y, br.w, br.h, 12, 0xffc8ff);
+        this._panel(br.x, br.y, br.w, br.h, 12, bh ? 0x4a2560 : 0x241036, 1, bh ? 0xffc8ff : 0x9664c8, 2);
+        this._text(960, br.y + br.h / 2, t('shop_back'), 24, bh ? '#ffffff' : '#d8c0ee', 0.5, 0.5);
     }
 
     _renderSkillTree() {
-        const g = this._add(this.scene.add.graphics());
+        const g = this.g;
         for (let b = 0; b < 3; b++) {
-            this._text(SHOP_BRANCH_X[b], 185, t('branch_names')[b], 36, this._hex(branchColor(b)), 0.5, 0.5);
-            // стрелки между рядами
+            const bc = branchColor(b);
+            this._text(SHOP_BRANCH_X[b], 178, t('branch_names')[b], 34, this._hex(bc), 0.5, 0.5, this._hex(bc));
+            // соединители-стрелки между рядами
             for (let r = 0; r < 2; r++) {
                 const x = SHOP_BRANCH_X[b];
                 const y1 = SHOP_NODE_Y[r] + SHOP_CARD_H / 2;
                 const y2 = SHOP_NODE_Y[r + 1] - SHOP_CARD_H / 2;
-                const col = this.nodeUnlocked(b, r + 1) ? branchColor(b) : 0x464646;
-                g.fillStyle(col, 1);
-                g.fillRect(x - 2, y1, 4, y2 - y1 - 14);
+                const on = this.nodeUnlocked(b, r + 1);
+                g.fillStyle(on ? bc : 0x39323f, on ? 1 : 0.6);
+                g.fillRoundedRect(x - 3, y1, 6, y2 - y1 - 14, 3);
                 g.beginPath();
-                g.moveTo(x - 10, y2 - 14); g.lineTo(x + 10, y2 - 14); g.lineTo(x, y2);
+                g.moveTo(x - 11, y2 - 14); g.lineTo(x + 11, y2 - 14); g.lineTo(x, y2 + 2);
                 g.closePath(); g.fillPath();
             }
         }
@@ -263,41 +320,52 @@ class Shop {
             const col = branchColor(b);
             const cc = Phaser.Display.Color.IntegerToRGB(col);
 
-            let fill, fillA = 1, stroke;
-            if (locked) { fill = 0x0f0f14; stroke = 0x323237; }
-            else if (maxed) { fill = rgb(cc.r / 5, cc.g / 5, cc.b / 5); fillA = 220 / 255; stroke = col; }
-            else if (isSel || isHov) { fill = rgb(cc.r / 4, cc.g / 4, cc.b / 4); stroke = 0xffffff; }
-            else { fill = 0x140f1e; stroke = afford ? col : 0x782828; }
-            this._rect(nr.x, nr.y, nr.w, nr.h, fill, fillA, isSel ? 4 : 2, stroke);
+            if ((isSel || isHov) && !locked) this._glow(nr.x, nr.y, nr.w, nr.h, 14, maxed ? col : 0xffffff);
 
-            const cx = nr.x + SHOP_CARD_W / 2;
-            this._text(cx, nr.y + 10, t('node_titles')[b][r], 24, locked ? '#464646' : '#ffffff', 0.5, 0);
+            let fill, stroke, strokeW = 2;
+            if (locked) { fill = 0x0c0a14; stroke = 0x2a2730; }
+            else if (maxed) { fill = rgb(cc.r / 6, cc.g / 6, cc.b / 6); stroke = col; }
+            else if (isSel) { fill = rgb(cc.r / 5, cc.g / 5, cc.b / 5); stroke = 0xffffff; strokeW = 3; }
+            else if (isHov) { fill = rgb(cc.r / 5, cc.g / 5, cc.b / 5); stroke = 0xffffff; }
+            else { fill = 0x130e1f; stroke = afford ? col : 0x5a2a3a; }
+            this._panel(nr.x, nr.y, nr.w, nr.h, 14, fill, 1, stroke, strokeW);
+            if (!locked) { g.fillStyle(col, maxed ? 1 : 0.85); g.fillRoundedRect(nr.x, nr.y + 10, 5, nr.h - 20, 3); }
+
             const cur = this.nodeCurLevel(b, r), mx = this.nodeMaxLevel(b, r);
-            const lvlStr = maxed ? t('shop_max') : (t('shop_lv') + ' ' + cur + ' / ' + mx);
-            this._text(cx, nr.y + 45, lvlStr, 20, maxed ? this._hex(col) : '#a0a0a0', 0.5, 0);
-            this._text(cx, nr.y + 72, t('node_descs')[b][r], 17, locked ? '#373737' : '#969696', 0.5, 0);
+            // Иконка слева, если текстура есть; текст тогда слева, иначе по центру.
+            const icon = this._icon(NODE_ICONS[b * 3 + r], nr.x + 48, nr.y + nr.h / 2, 78, locked ? 0.3 : 1);
+            const tx = icon ? nr.x + 96 : nr.x + SHOP_CARD_W / 2;
+            const ox = icon ? 0 : 0.5;
+            const right = nr.x + nr.w - 18;
+            const barX = icon ? tx : nr.x + 40, barW = icon ? right - tx : nr.w - 80;
+
+            this._text(tx, nr.y + 13, t('node_titles')[b][r], 23, locked ? '#4a4a52' : '#ffffff', ox, 0);
+            this._text(tx, nr.y + 44, locked ? t('shop_locked') : (maxed ? t('shop_max') : t('shop_lv') + ' ' + cur + ' / ' + mx), 18,
+                locked ? '#52525a' : (maxed ? this._hex(col) : '#b0a8c0'), ox, 0);
+            if (!locked) this._bar(barX, nr.y + 72, barW, 8, mx > 0 ? cur / mx : 0, col);
+            if (!locked) this._text(tx, nr.y + 88, t('node_descs')[b][r], 16, '#8a8a96', ox, 0);
 
             if (!locked && !maxed) {
                 const cost = this.nodeCost(b, r);
-                const coin = this._add(this.scene.add.sprite(cx - 16, nr.y + 102 + 11, 'coin').setOrigin(0.5, 0.5));
-                coin.setDisplaySize(22, 22);
-                this._text(cx + 4, nr.y + 100, '' + cost, 22, afford ? '#ffff00' : '#c83c3c', 0, 0);
-            } else if (locked) {
-                this._text(cx, nr.y + 105, t('shop_locked'), 20, '#505050', 0.5, 0);
+                const coinX = icon ? tx + 10 : nr.x + SHOP_CARD_W / 2 - 16;
+                const coin = this._add(this.scene.add.sprite(coinX, nr.y + nr.h - 20, 'coin').setOrigin(0.5, 0.5));
+                coin.setDisplaySize(20, 20);
+                this._text(coinX + 14, nr.y + nr.h - 20, '' + cost, 21, afford ? '#ffe24a' : '#d2643c', 0, 0.5);
             }
         }
     }
 
     _renderArtifacts() {
         const s = this.s;
-        let activeCount = 0;
-        for (let j = 0; j < ARTIFACT_COUNT; j++) activeCount += (s.permArtifacts >> j) & 1;
-        const slotsFull = activeCount >= 3;
-
-        this._text(960, 230, t('shop_artifacts'), 36, '#c8b4ff', 0.5, 0.5);
         let activeEq = 0;
         for (let j = 0; j < ARTIFACT_COUNT; j++) activeEq += (s.permActiveArtifacts >> j) & 1;
-        this._text(960, 278, t('shop_slots') + ':  ' + activeEq + ' / 3', 22, activeEq >= 3 ? '#ff5050' : '#00dca0', 0.5, 0.5);
+
+        // Индикатор слотов (пилюля по центру)
+        const full = activeEq >= 3;
+        const slotTxt = t('shop_slots') + ':  ' + activeEq + ' / 3';
+        const sw = 80 + slotTxt.length * 11, sh = 44;
+        this._panel(960 - sw / 2, 240 - sh / 2, sw, sh, sh / 2, 0x1a1030, 1, full ? 0xff5a5a : 0x00c89a, 2);
+        this._text(960, 240, slotTxt, 22, full ? '#ff7a7a' : '#28e6b4', 0.5, 0.5);
 
         for (let i = 0; i < ARTIFACT_COUNT; i++) {
             const ar = this.artifactRect(i);
@@ -305,33 +373,43 @@ class Shop {
             const isActive = (s.permActiveArtifacts >> i) & 1;
             const isHov = this.hovArtifact === i;
             const afford = !isOwned && s.totalCoins >= ARTIFACTS[i].cost;
-            let activeEqCnt = 0;
-            for (let j = 0; j < ARTIFACT_COUNT; j++) activeEqCnt += (s.permActiveArtifacts >> j) & 1;
-            const blocked = isOwned && !isActive && activeEqCnt >= 3;
+            const blocked = isOwned && !isActive && activeEq >= 3;
             const col = ARTIFACT_COLORS[i];
             const cc = Phaser.Display.Color.IntegerToRGB(col);
 
-            let fill, fillA = 1, stroke;
-            if (isActive) { fill = rgb(cc.r / 5, cc.g / 5, cc.b / 5); fillA = 220 / 255; stroke = isHov ? 0xffffff : col; }
-            else if (isOwned && !blocked) { fill = isHov ? rgb(cc.r / 4, cc.g / 4, cc.b / 4) : 0x0f0c19; stroke = isHov ? 0xffffff : rgb(cc.r / 2, cc.g / 2, cc.b / 2); }
-            else if (blocked) { fill = 0x0f0c19; stroke = 0x464150; }
-            else if (isHov) { fill = rgb(cc.r / 4, cc.g / 4, cc.b / 4); stroke = 0xffffff; }
-            else { fill = 0x140f1e; stroke = afford ? col : 0x782828; }
-            this._rect(ar.x, ar.y, ar.w, ar.h, fill, fillA, isHov ? 4 : 2, stroke);
+            if ((isHov || isActive) && !blocked) this._glow(ar.x, ar.y, ar.w, ar.h, 14, isHov ? 0xffffff : col);
 
-            const cx = ar.x + ACARD_W / 2;
-            const titleCol = isActive ? this._hex(col) : (isOwned ? '#c8c8c8' : '#ffffff');
-            this._text(cx, ar.y + 12, t('artifact_names')[i], 22, titleCol, 0.5, 0);
-            this._text(cx, ar.y + 50, t('artifact_descs')[i], 16, '#969696', 0.5, 0);
+            let fill, stroke, strokeW = 2;
+            if (isActive) { fill = rgb(cc.r / 6, cc.g / 6, cc.b / 6); stroke = isHov ? 0xffffff : col; strokeW = 3; }
+            else if (isOwned && !blocked) { fill = isHov ? rgb(cc.r / 5, cc.g / 5, cc.b / 5) : 0x0f0c19; stroke = isHov ? 0xffffff : rgb(cc.r / 2, cc.g / 2, cc.b / 2); }
+            else if (blocked) { fill = 0x0f0c19; stroke = 0x464150; }
+            else if (isHov) { fill = rgb(cc.r / 5, cc.g / 5, cc.b / 5); stroke = 0xffffff; }
+            else { fill = 0x140f1e; stroke = afford ? col : 0x5a2a3a; }
+            this._panel(ar.x, ar.y, ar.w, ar.h, 14, fill, 1, stroke, strokeW);
+            this.g.fillStyle(col, blocked ? 0.4 : 0.9);
+            this.g.fillRoundedRect(ar.x, ar.y + 12, 5, ar.h - 24, 3);
+
+            // Иконка слева, если есть; текст тогда слева, иначе по центру.
+            const icon = this._icon(ARTIFACT_ICONS[i], ar.x + 54, ar.y + ar.h / 2, 88, blocked ? 0.35 : 1);
+            const tx = icon ? ar.x + 108 : ar.x + ACARD_W / 2;
+            const ox = icon ? 0 : 0.5;
+
+            const titleCol = isActive ? this._hex(col) : (blocked ? '#7a7286' : (isOwned ? '#d2d2d2' : '#ffffff'));
+            // Доступная ширина для текста: от tx до правого края карточки минус отступ.
+            const wrapW = ar.x + ACARD_W - 16 - tx;
+            this._text(tx, ar.y + 16, t('artifact_names')[i], 22, titleCol, ox, 0, isActive ? this._hex(col) : undefined);
+            this._text(tx, ar.y + 54, t('artifact_descs')[i], 16, blocked ? '#5e5868' : '#a098ac', ox, 0, undefined, wrapW);
 
             if (isActive) {
-                this._text(cx, ar.y + 118, isHov ? t('shop_unequip') : t('shop_active'), 20, isHov ? '#c8c8c8' : this._hex(col), 0.5, 0);
+                this._text(tx, ar.y + 128, isHov ? t('shop_unequip') : t('shop_active'), 20, isHov ? '#d2d2d2' : this._hex(col), ox, 0);
             } else if (isOwned) {
-                this._text(cx, ar.y + 118, blocked ? t('shop_slots_full') : (isHov ? t('shop_equip') : t('shop_owned')), 20, blocked ? '#786482' : this._hex(rgb(cc.r / 2 + 80, cc.g / 2 + 80, cc.b / 2 + 80)), 0.5, 0);
+                this._text(tx, ar.y + 128, blocked ? t('shop_slots_full') : (isHov ? t('shop_equip') : t('shop_owned')), 20,
+                    blocked ? '#786482' : this._hex(rgb(cc.r / 2 + 80, cc.g / 2 + 80, cc.b / 2 + 80)), ox, 0);
             } else {
-                const coin = this._add(this.scene.add.sprite(cx - 16, ar.y + 120 + 11, 'coin').setOrigin(0.5, 0.5));
+                const coinX = icon ? tx + 10 : ar.x + ACARD_W / 2 - 18;
+                const coin = this._add(this.scene.add.sprite(coinX, ar.y + 140, 'coin').setOrigin(0.5, 0.5));
                 coin.setDisplaySize(22, 22);
-                this._text(cx + 4, ar.y + 118, '' + ARTIFACTS[i].cost, 22, afford ? '#ffff00' : '#c83c3c', 0, 0);
+                this._text(coinX + 16, ar.y + 140, '' + ARTIFACTS[i].cost, 22, afford ? '#ffe24a' : '#d2643c', 0, 0.5);
             }
         }
     }

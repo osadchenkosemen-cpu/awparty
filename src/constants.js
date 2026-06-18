@@ -72,7 +72,9 @@ const UPGRADE_ICONS = ['icon_fire', 'icon_dmg', 'icon_speed', 'icon_magnet', 'ic
 // id 5 = блейдмейл, id 6 = прострел.
 const LEGENDARY_UPGRADE_IDS = [5, 6];
 // Шанс, что конкретная легендарная карта вообще попадёт в пул выбора при ап-левеле.
-const LEGENDARY_CARD_CHANCE = 0.18;
+// 0.27 даёт ~25% левел-апов, на которых показывается хотя бы одна легендарка
+// (с учётом последующего отбора 3 карт из пула).
+const LEGENDARY_CARD_CHANCE = 0.27;
 
 // Ability data (AbilitySelectUI.cpp). Названия — в i18n.js: ability_names.
 const ABILITY_COOLDOWNS = { 0: 25, 1: 15, 2: 12, 3: 14 };
@@ -119,6 +121,25 @@ const TEXTURE_MANIFEST = [
     ['icon_hp', 'icon_hp.png'],
     ['icon_blademail', 'icon_blademail.png'],
     ['icon_pierce', 'icon_pierce.png'],
+    // Иконки артефактов (магазин). Файлы опциональны: если их нет, карточка
+    // рисуется без иконки (graceful fallback в shop.js через textures.exists).
+    ['art_bloodpact', 'art_bloodpact.png'],
+    ['art_glasscannon', 'art_glasscannon.png'],
+    ['art_echo', 'art_echo.png'],
+    ['art_soulleech', 'art_soulleech.png'],
+    ['art_berserker', 'art_berserker.png'],
+    ['art_ironskin', 'art_ironskin.png'],
+    ['art_magnetcore', 'art_magnetcore.png'],
+    // Иконки узлов дерева навыков (индекс = branch*3 + row).
+    ['node_damage', 'node_damage.png'],
+    ['node_crit', 'node_crit.png'],
+    ['node_multishot', 'node_multishot.png'],
+    ['node_maxhp', 'node_maxhp.png'],
+    ['node_regen', 'node_regen.png'],
+    ['node_armor', 'node_armor.png'],
+    ['node_speed', 'node_speed.png'],
+    ['node_dash', 'node_dash.png'],
+    ['node_magnet', 'node_magnet.png'],
 ];
 
 // Player walk animation frames: dir -> [6 keys] (Game.cpp constructor)
