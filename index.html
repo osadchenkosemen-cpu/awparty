@@ -11,6 +11,13 @@
             font-weight: 100 900;
             font-display: block;
         }
+        /* Exo 2 — техно-шрифт с кириллицей (Orbitron её не содержит). */
+        @font-face {
+            font-family: 'Exo 2';
+            src: url('assets/Exo2-VariableFont_wght.ttf') format('truetype');
+            font-weight: 100 900;
+            font-display: block;
+        }
         html, body {
             margin: 0;
             padding: 0;
@@ -19,11 +26,16 @@
             width: 100%;
             height: 100%;
         }
-        /* Прогрев шрифта, чтобы Phaser-текст сразу рисовался Orbitron */
+        /* Прогрев шрифтов, чтобы Phaser-текст сразу рисовался нужным шрифтом */
         #fontwarm {
             position: absolute;
             left: -9999px;
             font-family: 'Orbitron';
+        }
+        #fontwarm2 {
+            position: absolute;
+            left: -9999px;
+            font-family: 'Exo 2';
         }
         #game {
             width: 100vw;
@@ -38,23 +50,32 @@
 <body>
     <div id="game"></div>
     <span id="fontwarm">warm</span>
+    <span id="fontwarm2">прогрев</span>
+
+    <!-- Отключаем контекстное меню по ПКМ.
+         capture=true — перехват в фазе погружения, раньше любых обработчиков на canvas,
+         поэтому меню не появится, даже если кто-то вызовет stopPropagation. -->
+    <script>
+        document.addEventListener('contextmenu', function (e) { e.preventDefault(); return false; }, true);
+    </script>
 
     <!-- Engine -->
     <script src="phaser.min.js"></script>
 
     <!-- Game modules (load order matters: plain globals, no bundler).
          ?v=... — анти-кэш: меняйте число при правках, чтобы браузер брал свежий код. -->
-    <script src="src/constants.js?v=36"></script>
-    <script src="src/utils.js?v=36"></script>
-    <script src="src/save.js?v=36"></script>
-    <script src="src/entities.js?v=36"></script>
-    <script src="src/spawner.js?v=36"></script>
-    <script src="src/hud.js?v=36"></script>
-    <script src="src/shop.js?v=36"></script>
-    <script src="src/audio.js?v=36"></script>
-    <script src="src/config.js?v=36"></script>
-    <script src="src/leaderboard_remote.js?v=36"></script>
-    <script src="src/scene.js?v=36"></script>
-    <script src="src/main.js?v=36"></script>
+    <script src="src/constants.js?v=41"></script>
+    <script src="src/i18n.js?v=41"></script>
+    <script src="src/utils.js?v=41"></script>
+    <script src="src/save.js?v=41"></script>
+    <script src="src/entities.js?v=41"></script>
+    <script src="src/spawner.js?v=41"></script>
+    <script src="src/hud.js?v=41"></script>
+    <script src="src/shop.js?v=41"></script>
+    <script src="src/audio.js?v=41"></script>
+    <script src="src/config.js?v=41"></script>
+    <script src="src/leaderboard_remote.js?v=41"></script>
+    <script src="src/scene.js?v=41"></script>
+    <script src="src/main.js?v=41"></script>
 </body>
 </html>

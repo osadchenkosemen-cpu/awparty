@@ -36,7 +36,12 @@ window.addEventListener('load', () => {
         setTimeout(fit, 100);
     };
     if (document.fonts && document.fonts.load) {
-        document.fonts.load('30px Orbitron').then(start).catch(start);
+        // Ждём оба шрифта: Orbitron (латиница) и Exo 2 (кириллица), иначе первый кадр
+        // нарисуется запасным Arial.
+        Promise.all([
+            document.fonts.load('30px Orbitron'),
+            document.fonts.load('30px "Exo 2"', 'прогрев'),
+        ]).then(start).catch(start);
     } else {
         start();
     }

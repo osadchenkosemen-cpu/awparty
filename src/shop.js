@@ -7,17 +7,7 @@ const SHOP_CARD_W = 340, SHOP_CARD_H = 150;
 const ACARD_W = 340, ACARD_H = 175;
 const ARTIFACT_COUNT = 7;
 
-const NODE_TITLES = [
-    ['DAMAGE', 'CRIT CHANCE', 'MULTISHOT'],
-    ['MAX HP', 'REGEN', 'ARMOR'],
-    ['SPEED', 'DASH', 'MAGNET'],
-];
-const NODE_DESCS = [
-    ['Attack power +1', '+5% crit chance', 'Every 8th shot +1'],
-    ['Max HP +10', 'Heal 10 HP over time', '-20% damage / lvl'],
-    ['Move speed +10', 'Unlock/upgrade dash', 'Pickup radius +100'],
-];
-const BRANCH_NAMES = ['ATTACK', 'SURVIVAL', 'MOBILITY'];
+// Тексты узлов/веток — в i18n.js (node_titles / node_descs / branch_names).
 const ARTIFACT_COLORS = [0xdc3c3c, 0xffa028, 0x50c8ff, 0xa03cdc, 0xff6428, 0xa0a0a0, 0x3cdca0];
 
 function branchColor(b) {
@@ -225,11 +215,11 @@ class Shop {
         const s = this.s;
 
         this._rect(0, 0, 1920, 1080, 0x0a0514, 1);
-        this._text(960, 55, this.activeTab === 0 ? 'SKILL TREE' : 'ARTIFACTS', 52, '#c8c8ff', 0.5, 0.5);
-        this._text(1880, 20, 'Coins: ' + s.totalCoins, 30, '#ffff00', 1, 0);
+        this._text(960, 55, this.activeTab === 0 ? t('shop_skilltree') : t('shop_artifacts'), 52, '#c8c8ff', 0.5, 0.5);
+        this._text(1880, 20, t('shop_coins') + ': ' + s.totalCoins, 30, '#ffff00', 1, 0);
 
         // Вкладки
-        const tabNames = ['SKILL TREE', 'ARTIFACTS'];
+        const tabNames = [t('shop_skilltree'), t('shop_artifacts')];
         for (let t = 0; t < 2; t++) {
             const tr = this.tabRect(t);
             const active = this.activeTab === t;
@@ -243,13 +233,13 @@ class Shop {
         // Кнопка назад
         const br = this.backRect();
         this._rect(br.x, br.y, br.w, br.h, this.backHovered ? 0x502864 : 0x28143c, 1, 2, this.backHovered ? 0xffc8ff : 0x9664c8);
-        this._text(960, 870, '[ ESC  -  Back ]', 26, '#ffffff', 0.5, 0.5);
+        this._text(960, 870, t('shop_back'), 26, '#ffffff', 0.5, 0.5);
     }
 
     _renderSkillTree() {
         const g = this._add(this.scene.add.graphics());
         for (let b = 0; b < 3; b++) {
-            this._text(SHOP_BRANCH_X[b], 185, BRANCH_NAMES[b], 36, this._hex(branchColor(b)), 0.5, 0.5);
+            this._text(SHOP_BRANCH_X[b], 185, t('branch_names')[b], 36, this._hex(branchColor(b)), 0.5, 0.5);
             // стрелки между рядами
             for (let r = 0; r < 2; r++) {
                 const x = SHOP_BRANCH_X[b];
@@ -281,11 +271,11 @@ class Shop {
             this._rect(nr.x, nr.y, nr.w, nr.h, fill, fillA, isSel ? 4 : 2, stroke);
 
             const cx = nr.x + SHOP_CARD_W / 2;
-            this._text(cx, nr.y + 10, NODE_TITLES[b][r], 24, locked ? '#464646' : '#ffffff', 0.5, 0);
+            this._text(cx, nr.y + 10, t('node_titles')[b][r], 24, locked ? '#464646' : '#ffffff', 0.5, 0);
             const cur = this.nodeCurLevel(b, r), mx = this.nodeMaxLevel(b, r);
-            const lvlStr = maxed ? 'MAX' : ('Lv ' + cur + ' / ' + mx);
+            const lvlStr = maxed ? t('shop_max') : (t('shop_lv') + ' ' + cur + ' / ' + mx);
             this._text(cx, nr.y + 45, lvlStr, 20, maxed ? this._hex(col) : '#a0a0a0', 0.5, 0);
-            this._text(cx, nr.y + 72, NODE_DESCS[b][r], 17, locked ? '#373737' : '#969696', 0.5, 0);
+            this._text(cx, nr.y + 72, t('node_descs')[b][r], 17, locked ? '#373737' : '#969696', 0.5, 0);
 
             if (!locked && !maxed) {
                 const cost = this.nodeCost(b, r);
@@ -293,7 +283,7 @@ class Shop {
                 coin.setDisplaySize(22, 22);
                 this._text(cx + 4, nr.y + 100, '' + cost, 22, afford ? '#ffff00' : '#c83c3c', 0, 0);
             } else if (locked) {
-                this._text(cx, nr.y + 105, 'LOCKED', 20, '#505050', 0.5, 0);
+                this._text(cx, nr.y + 105, t('shop_locked'), 20, '#505050', 0.5, 0);
             }
         }
     }
@@ -304,10 +294,10 @@ class Shop {
         for (let j = 0; j < ARTIFACT_COUNT; j++) activeCount += (s.permArtifacts >> j) & 1;
         const slotsFull = activeCount >= 3;
 
-        this._text(960, 230, 'ARTIFACTS', 36, '#c8b4ff', 0.5, 0.5);
+        this._text(960, 230, t('shop_artifacts'), 36, '#c8b4ff', 0.5, 0.5);
         let activeEq = 0;
         for (let j = 0; j < ARTIFACT_COUNT; j++) activeEq += (s.permActiveArtifacts >> j) & 1;
-        this._text(960, 278, 'SLOTS:  ' + activeEq + ' / 3', 22, activeEq >= 3 ? '#ff5050' : '#00dca0', 0.5, 0.5);
+        this._text(960, 278, t('shop_slots') + ':  ' + activeEq + ' / 3', 22, activeEq >= 3 ? '#ff5050' : '#00dca0', 0.5, 0.5);
 
         for (let i = 0; i < ARTIFACT_COUNT; i++) {
             const ar = this.artifactRect(i);
@@ -331,13 +321,13 @@ class Shop {
 
             const cx = ar.x + ACARD_W / 2;
             const titleCol = isActive ? this._hex(col) : (isOwned ? '#c8c8c8' : '#ffffff');
-            this._text(cx, ar.y + 12, ARTIFACTS[i].name, 22, titleCol, 0.5, 0);
-            this._text(cx, ar.y + 50, ARTIFACTS[i].desc, 16, '#969696', 0.5, 0);
+            this._text(cx, ar.y + 12, t('artifact_names')[i], 22, titleCol, 0.5, 0);
+            this._text(cx, ar.y + 50, t('artifact_descs')[i], 16, '#969696', 0.5, 0);
 
             if (isActive) {
-                this._text(cx, ar.y + 118, isHov ? 'UNEQUIP' : 'ACTIVE', 20, isHov ? '#c8c8c8' : this._hex(col), 0.5, 0);
+                this._text(cx, ar.y + 118, isHov ? t('shop_unequip') : t('shop_active'), 20, isHov ? '#c8c8c8' : this._hex(col), 0.5, 0);
             } else if (isOwned) {
-                this._text(cx, ar.y + 118, blocked ? 'SLOTS FULL' : (isHov ? 'EQUIP' : 'OWNED'), 20, blocked ? '#786482' : this._hex(rgb(cc.r / 2 + 80, cc.g / 2 + 80, cc.b / 2 + 80)), 0.5, 0);
+                this._text(cx, ar.y + 118, blocked ? t('shop_slots_full') : (isHov ? t('shop_equip') : t('shop_owned')), 20, blocked ? '#786482' : this._hex(rgb(cc.r / 2 + 80, cc.g / 2 + 80, cc.b / 2 + 80)), 0.5, 0);
             } else {
                 const coin = this._add(this.scene.add.sprite(cx - 16, ar.y + 120 + 11, 'coin').setOrigin(0.5, 0.5));
                 coin.setDisplaySize(22, 22);

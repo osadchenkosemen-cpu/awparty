@@ -17,6 +17,7 @@ const SaveSystem = {
             soundVolume: 40,    // громкость музыки, 0..100
             effectsVolume: 60,  // громкость SFX, 0..100
             playerName: '',     // последний введённый ник (подставляется на экране рекорда)
+            language: detectLang(), // язык интерфейса 'en'|'ru' (по умолчанию — по языку браузера)
             permMaxHp: 100,
             permDamage: 1,
             permSpeed: 220,
@@ -45,6 +46,7 @@ const SaveSystem = {
         if (!(b.effectsVolume >= 0 && b.effectsVolume <= 100)) b.effectsVolume = 60;
         if (typeof b.playerName !== 'string') b.playerName = '';
         else b.playerName = b.playerName.slice(0, 20);
+        if (b.language !== 'en' && b.language !== 'ru') b.language = detectLang();
         // Новая шкала HP: база 100, +10 за уровень MAX HP (макс 170). Старые сейвы (3..10) обнуляются до 100.
         if (b.permMaxHp < 100) b.permMaxHp = 100;
         if (b.permMaxHp > 170) b.permMaxHp = 170;
@@ -80,6 +82,7 @@ const SaveSystem = {
             soundVolume: data.soundVolume,
             effectsVolume: data.effectsVolume,
             playerName: data.playerName,
+            language: data.language,
             permMaxHp: data.permMaxHp,
             permDamage: data.permDamage,
             permSpeed: data.permSpeed,

@@ -2,7 +2,8 @@
 // Все объекты создаются один раз и складываются в uiLayer; update() обновляет
 // значения и перерисовывает кулдауны способностей.
 
-const FONT = 'Orbitron, Arial';
+// Orbitron — латиница/цифры (фирменный вид), Exo 2 — кириллица (Orbitron её не содержит).
+const FONT = 'Orbitron, "Exo 2", Arial';
 
 class HUD {
     constructor(scene) {
@@ -158,12 +159,12 @@ class HUD {
         // XP / level
         const xpPct = player.currentXP / player.xpToNextLevel;
         this.xpFill.setSize((W - 100) * clamp(xpPct, 0, 1), 25);
-        this.lvlText.setText('LVL ' + player.level);
+        this.lvlText.setText(t('hud_lvl') + ' ' + player.level);
 
         // HP
         const hpPct = player.hp / player.maxHp;
         this.hpFill.setSize(400 * Math.max(0, hpPct), 30);
-        this.hpText.setText('HP ' + Math.max(0, player.hp) + ' / ' + player.maxHp);
+        this.hpText.setText(t('hud_hp') + ' ' + Math.max(0, player.hp) + ' / ' + player.maxHp);
 
         // Coins
         this.coinText.setText('' + totalCoins);

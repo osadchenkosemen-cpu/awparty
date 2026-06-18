@@ -65,19 +65,10 @@ const EnemyType = {
 const BossState = { WALKING: 0, PREPARING: 1, JUMPING: 2, RECOVERING: 3 };
 const GoblinState = { WALKING: 0, PREPARING: 1, THROWING: 2, RECOVERING: 3 };
 
-// In-run upgrade titles/descs (Game.cpp triggerLevelUp / LevelUpUI)
-const UPGRADE_TITLES = ['FAST TRIGGER', 'BRUTE FORCE', 'RUNNER', 'MAGNETISM', 'HEALTH UP'];
-const UPGRADE_DESCS = [
-    'Increases firing\nspeed.',
-    'Increases bullet\ndamage.',
-    'Increases movement\nspeed.',
-    'Increases pickup\nradius.',
-    'Increases Max HP\nby 10.',
-];
+// In-run upgrade icons (тексты названий/описаний — в i18n.js: upgrade_titles / upgrade_descs)
 const UPGRADE_ICONS = ['icon_fire', 'icon_dmg', 'icon_speed', 'icon_magnet', 'icon_hp'];
 
-// Ability data (AbilitySelectUI.cpp)
-const ABILITY_NAMES = { 0: 'INVINCIBILITY', 1: 'GROUND SLAM', 2: 'DISC STORM' };
+// Ability data (AbilitySelectUI.cpp). Названия — в i18n.js: ability_names.
 const ABILITY_COOLDOWNS = { 0: 25, 1: 15, 2: 12 };
 const ABILITY_ICONS = { '-10': 'ability_dash', 0: 'ability_invincible', 1: 'ability_slam', 2: 'ability_disc' };
 

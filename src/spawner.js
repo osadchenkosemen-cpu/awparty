@@ -63,9 +63,9 @@ class EnemySpawner {
                 const p = findSpawnPos(px, py, arenaW, arenaH, SPAWN_SAFE_DIST);
                 const e = new Enemy(scene, p.x, p.y, enemyKey);
                 const chance = randInt(100);
-                if (chance < 20) { e.makeFast(); e.hp += 2; e.maxHp += 2; e.damage += 20; }
-                else if (chance < 32) { e.makeTank(1); e.hp += 2; e.maxHp += 2; e.damage += 20; }
-                else { e.hp = e.maxHp = 4; e.damage = 30; }
+                if (chance < 20) { e.makeFast(); e.hp += 2; e.maxHp += 2; e.damage += 40; }
+                else if (chance < 32) { e.makeTank(1); e.hp += 2; e.maxHp += 2; e.damage += 40; }
+                else { e.hp = e.maxHp = 4; e.damage = 60; }
                 e.speed *= 1.25; // скорость как на этапе 2
                 if (isHardcore) { e.hp *= SPAWN_HARDCORE_HP; e.maxHp *= SPAWN_HARDCORE_HP; }
                 enemies.push(e);
@@ -75,7 +75,7 @@ class EnemySpawner {
                 const p = findSpawnPos(px, py, arenaW, arenaH, SPAWN_SAFE_DIST_GOBLIN);
                 const g = new Enemy(scene, p.x, p.y, enemyKey);
                 g.makeGoblin(goblinKey);
-                g.hp += 2; g.maxHp += 2; g.damage += 20;
+                g.hp += 2; g.maxHp += 2; g.damage += 40;
                 g.speed *= 1.25; // скорость как на этапе 2
                 if (isHardcore) { g.hp *= SPAWN_HARDCORE_HP; g.maxHp *= SPAWN_HARDCORE_HP; }
                 enemies.push(g);
@@ -122,9 +122,9 @@ class EnemySpawner {
                 const p = findSpawnPos(px, py, arenaW, arenaH, SPAWN_SAFE_DIST);
                 const e = new Enemy(scene, p.x, p.y, enemyKey);
                 const chance = randInt(100);
-                if (chance < 20) { e.makeFast(); e.hp += 1; e.maxHp += 1; e.damage += 10; }
-                else if (chance < 32) { e.makeTank(1); e.hp += 1; e.maxHp += 1; e.damage += 10; }
-                else { e.hp = e.maxHp = 3; e.damage = 20; }
+                if (chance < 20) { e.makeFast(); e.hp += 1; e.maxHp += 1; e.damage += 20; }
+                else if (chance < 32) { e.makeTank(1); e.hp += 1; e.maxHp += 1; e.damage += 20; }
+                else { e.hp = e.maxHp = 3; e.damage = 40; }
                 e.speed *= 1.25; // на 25% быстрее врагов фазы 1 (вместо прежнего hardcore-x1.5)
                 if (isHardcore) { e.hp *= SPAWN_HARDCORE_HP; e.maxHp *= SPAWN_HARDCORE_HP; }
                 enemies.push(e);
@@ -134,7 +134,7 @@ class EnemySpawner {
                 const p = findSpawnPos(px, py, arenaW, arenaH, SPAWN_SAFE_DIST_GOBLIN);
                 const g = new Enemy(scene, p.x, p.y, enemyKey);
                 g.makeGoblin(goblinKey);
-                g.hp += 1; g.maxHp += 1; g.damage += 10;
+                g.hp += 1; g.maxHp += 1; g.damage += 20;
                 g.speed *= 1.25; // на 25% быстрее, как и остальные враги фазы 2
                 if (isHardcore) { g.hp *= SPAWN_HARDCORE_HP; g.maxHp *= SPAWN_HARDCORE_HP; }
                 enemies.push(g);

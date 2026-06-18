@@ -20,6 +20,10 @@ class MainScene extends Phaser.Scene {
     create() {
         // Сейв
         this.save = SaveSystem.load();
+        setLanguage(this.save.language); // применить выбранный язык интерфейса
+
+        // Отключаем контекстное меню браузера на canvas (ПКМ используется в игре)
+        if (this.input && this.input.mouse) this.input.mouse.disableContextMenu();
         // Две таблицы рекордов: обычная и hardcore. lbView — какая сейчас показывается.
         this.leaderboards = { normal: SaveSystem.loadLeaderboard(false), hardcore: SaveSystem.loadLeaderboard(true) };
         this.lbView = 'normal';
@@ -632,7 +636,7 @@ class MainScene extends Phaser.Scene {
         for (const e of this.enemies) {
             if (e.isBoss) {
                 bossExists = true; bossHpPct = Math.max(0, e.hp / e.maxHp);
-                this.hud.bossName.setText(e.isBoss2 ? 'BASS DROP' : 'THE OVERSEER');
+                this.hud.bossName.setText(e.isBoss2 ? t('boss2_name') : t('boss_name'));
                 break;
             }
         }
@@ -695,14 +699,14 @@ class MainScene extends Phaser.Scene {
 
     _confirmNameInput() {
         const typed = this.nameInput.trim();
-        if (!typed) { this._nameError = 'Enter a name'; this.rebuildMenu(); return; }
+        if (!typed) { this._nameError = t('err_enter_name'); this.rebuildMenu(); return; }
         // Ник должен быть свободен (одна запись на игрока).
         RemoteLeaderboard.nameTaken(typed, (taken) => {
             // null = оффлайн/без конфига: проверяем по обеим локальным таблицам.
             const localTaken = this.leaderboards.normal.some(e => e.name === typed) || this.leaderboards.hardcore.some(e => e.name === typed);
             const isTaken = (taken === null) ? localTaken : taken;
             if (isTaken) {
-                this._nameError = 'Name is taken';
+                this._nameError = t('err_name_taken');
                 if (this.currentState === GameState.NAME_INPUT) this.rebuildMenu();
                 return;
             }
@@ -983,8 +987,7 @@ class MainScene extends Phaser.Scene {
 
         // Сообщение об апгрейде над игроком
         if (p.messageTimer > 0 && !this.isGameOver) {
-            const titles = ['UPGRADE: Fire Rate +', 'UPGRADE: Damage +', 'UPGRADE: Speed +', 'UPGRADE: Magnet +', 'UPGRADE: Max HP +1'];
-            const str = titles[p.lastUpgradeId] || '';
+            const str = t('upgrade_toasts')[p.lastUpgradeId] || '';
             this.upgradeMsg.setText(str).setVisible(true);
             this.upgradeMsg.setPosition(p.sprite.x, p.sprite.y - 80 - (2.0 - p.messageTimer) * 20);
             this.upgradeMsg.setAlpha(p.messageTimer / 2.0);
@@ -1006,12 +1009,12 @@ class MainScene extends Phaser.Scene {
             let col = '#00ffc8';
             if (this.activeStep === 2) col = '#ff5050'; else if (this.activeStep === 3) col = '#ff8c00';
             this.phaseOverlay.setVisible(true).setFillStyle(0x000000, 170 / 255 * alpha);
-            this.phaseText.setVisible(true).setText('PHASE  ' + this.activeStep).setColor(col).setAlpha(alpha);
+            this.phaseText.setVisible(true).setText(t('phase') + '  ' + this.activeStep).setColor(col).setAlpha(alpha);
         } else { this.phaseOverlay.setVisible(false); this.phaseText.setVisible(false); }
 
         // Подсказка зачистки
         if ((this.gamePhase === GamePhase.CLEARING || (this.gamePhase === GamePhase.PHASE_2 && this.phase2BossSpawned)) && !this.isGameOver) {
-            this.clearText.setVisible(true).setText('CLEAR ALL ENEMIES  [' + this.enemies.length + ' left]');
+            this.clearText.setVisible(true).setText(t('clear_all') + '  [' + this.enemies.length + ']');
         } else this.clearText.setVisible(false);
 
         // Предупреждения перед боссом
@@ -1088,7 +1091,7 @@ class MainScene extends Phaser.Scene {
     _buildMenuScreen() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
         this._mText(W / 2, H * 0.15, 'AwParty', 150, '#00ffc8', 0.5, 0.5, '#ffffff', 2);
-        const items = ['Play', 'Records', 'Settings'];
+        const items = [t('menu_play'), t('menu_records'), t('menu_settings')];
         for (let i = 0; i < items.length; i++) {
             const sel = i === this.selectedMenuIndex;
             this._mText(W / 2, H * 0.45 + i * 110, sel ? '> ' + items[i] + ' <' : items[i],
@@ -1099,11 +1102,11 @@ class MainScene extends Phaser.Scene {
     _buildLobby() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
         this.lobbyPlayer.setPosition(W * 0.25, H * 0.55).setScale(1.2);
-        this._mText(W * 0.7, H * 0.15, 'HUB', 100, '#00ffc8', 0.5, 0.5, '#ff0096', 4);
+        this._mText(W * 0.7, H * 0.15, t('lobby_hub'), 100, '#00ffc8', 0.5, 0.5, '#ff0096', 4);
         const coin = this._mAdd(this.add.sprite(W * 0.7 - 70, H * 0.27, 'coin').setOrigin(0.5, 0.5));
         coin.setDisplaySize(50, 50);
         this._mText(W * 0.7 - 30, H * 0.25, '' + this.save.totalCoins, 50, '#ffff00', 0, 0.5);
-        const items = ['START RUN', 'UPGRADES & SHOP', 'Back to Menu'];
+        const items = [t('lobby_start'), t('lobby_shop'), t('lobby_back')];
         for (let i = 0; i < items.length; i++) {
             const sel = i === this.selectedLobbyIndex;
             this._mText(W * 0.7, H * 0.45 + i * 110, sel ? '> ' + items[i] + ' <' : items[i],
@@ -1113,21 +1116,23 @@ class MainScene extends Phaser.Scene {
 
     _buildSettings() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT, s = this.save;
-        this._mText(W / 2, H * 0.15, 'AwParty', 150, '#00ffc8', 0.5, 0.5, '#ffffff', 2);
+        this._mText(W / 2, H * 0.11, 'AwParty', 110, '#00ffc8', 0.5, 0.5, '#ffffff', 2);
         const fps = C.FPS_LIMITS[s.currentFpsIndex];
+        const langLabel = s.language === 'ru' ? t('lang_ru') : t('lang_en');
         const items = [
-            'Hardcore Mode: ' + (s.isHardcoreMode ? 'ON' : 'OFF'),
-            'FPS Limit: < ' + (fps === 0 ? 'UNCAPPED' : fps) + ' >',
-            'Window Mode: < ' + (s.isFullscreen ? 'FULLSCREEN' : 'WINDOWED') + ' >',
-            'Sound: < ' + s.soundVolume + '% >',
-            'Effects: < ' + s.effectsVolume + '% >',
-            'Rename Player: ' + (s.playerName ? s.playerName : '(not set)'),
-            'Back',
+            t('set_hardcore') + ': ' + (s.isHardcoreMode ? t('on') : t('off')),
+            t('set_fps') + ': < ' + (fps === 0 ? t('fps_uncapped') : fps) + ' >',
+            t('set_window') + ': < ' + (s.isFullscreen ? t('win_full') : t('win_windowed')) + ' >',
+            t('set_sound') + ': < ' + s.soundVolume + '% >',
+            t('set_effects') + ': < ' + s.effectsVolume + '% >',
+            t('set_language') + ': < ' + langLabel + ' >',
+            t('set_rename') + ': ' + (s.playerName ? s.playerName : t('not_set')),
+            t('back'),
         ];
         for (let i = 0; i < items.length; i++) {
             const sel = i === this.selectedSettingIndex;
-            this._mText(W / 2, H * 0.30 + i * 110, sel ? '> ' + items[i] + ' <' : items[i],
-                sel ? 65 : 55, sel ? '#ffffff' : '#00ffc8', 0.5, 0.5, sel ? '#ff0096' : '#000', sel ? 3 : 2);
+            this._mText(W / 2, H * 0.25 + i * 84, sel ? '> ' + items[i] + ' <' : items[i],
+                sel ? 46 : 38, sel ? '#ffffff' : '#00ffc8', 0.5, 0.5, sel ? '#ff0096' : '#000', sel ? 3 : 2);
         }
         if (this.cheatMessageTimer > 0) this._mText(50, H - 110, this.cheatMessage, 28, '#ffff00', 0, 0);
     }
@@ -1135,14 +1140,14 @@ class MainScene extends Phaser.Scene {
     _buildLeaderboard() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x000000, 160 / 255).setOrigin(0, 0));
-        this._mText(W / 2, 50, 'RECORDS', 100, '#ffd700', 0.5, 0, '#b40050', 5);
+        this._mText(W / 2, 50, t('lb_title'), 100, '#ffd700', 0.5, 0, '#b40050', 5);
         // Заголовок режима + переключатель.
         const hc = this.lbView === 'hardcore';
-        this._mText(W / 2, 215, '<  ' + (hc ? 'HARDCORE' : 'NORMAL') + '  >', 44, hc ? '#ff5050' : '#00ffc8', 0.5, 0.5, '#000', 3);
+        this._mText(W / 2, 215, '<  ' + (hc ? t('lb_hardcore') : t('lb_normal')) + '  >', 44, hc ? '#ff5050' : '#00ffc8', 0.5, 0.5, '#000', 3);
         const board = this.leaderboards[this.lbView];
         const rowY0 = 300, rowH = 54;
         const colX = [W * 0.10, W * 0.20, W * 0.58, W * 0.78];
-        const hdrs = ['#', 'NAME', 'TIME', 'DATE'];
+        const hdrs = [t('lb_col_num'), t('lb_col_name'), t('lb_col_time'), t('lb_col_date')];
         for (let i = 0; i < 4; i++) this._mText(colX[i], rowY0 - 38, hdrs[i], 26, '#00ffc8', 0, 0);
         for (let i = 0; i < 10; i++) {
             const y = rowY0 + i * rowH;
@@ -1157,15 +1162,15 @@ class MainScene extends Phaser.Scene {
                 this._mText(colX[3], y, pad(e.day) + '.' + pad(e.month) + '.' + e.year, 30, col, 0, 0);
             } else this._mText(colX[1], y, '---', 30, col, 0, 0);
         }
-        this._mText(W / 2, H * 0.86, '<  /  >   -   Normal / Hardcore', 30, '#7d78a0', 0.5, 0, '#000', 2);
-        this._mText(W / 2, H * 0.92, '[ ESC / ENTER  -  Back ]', 36, '#00ffc8', 0.5, 0);
+        this._mText(W / 2, H * 0.86, t('lb_hint_switch'), 30, '#7d78a0', 0.5, 0, '#000', 2);
+        this._mText(W / 2, H * 0.92, t('lb_hint_back'), 36, '#00ffc8', 0.5, 0);
     }
 
     _buildPause() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x0a001e, 200 / 255).setOrigin(0, 0));
-        this._mText(W / 2, H / 2 - 150, 'PAUSED', 130, '#ffffff', 0.5, 0.5, '#000', 3);
-        const items = ['Resume', 'Restart', 'Quit to Hub'];
+        this._mText(W / 2, H / 2 - 150, t('pause_title'), 130, '#ffffff', 0.5, 0.5, '#000', 3);
+        const items = [t('pause_resume'), t('pause_restart'), t('pause_quit')];
         for (let i = 0; i < items.length; i++) {
             const sel = i === this.selectedPauseIndex;
             this._mText(W / 2, H / 2 + 50 + i * 100, sel ? '> ' + items[i] + ' <' : items[i],
@@ -1176,16 +1181,16 @@ class MainScene extends Phaser.Scene {
     _buildGameOver() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x1e000a, 220 / 255).setOrigin(0, 0));
-        this._mText(W / 2, H / 2, "GAME OVER\nPress 'R' to Restart\nPress 'Q' for Hub", 80, '#ffffff', 0.5, 0.5, '#000', 3);
-        this._mText(W / 2, H / 2 + 220, 'L  -  View Records', 32, '#00ffc8', 0.5, 0);
+        this._mText(W / 2, H / 2, t('gameover'), 80, '#ffffff', 0.5, 0.5, '#000', 3);
+        this._mText(W / 2, H / 2 + 220, t('gameover_records'), 32, '#00ffc8', 0.5, 0);
     }
 
     _buildNameInput() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x0a001e, 230 / 255).setOrigin(0, 0));
-        this._mText(W / 2, H * 0.22, 'NEW RECORD!', 110, '#ffd700', 0.5, 0.5, '#b40050', 5);
-        this._mText(W / 2, H * 0.36, 'Time Survived:  ' + formatTime(this.survivalTimer), 46, '#00ffc8', 0.5, 0.5, '#000', 3);
-        this._mText(W / 2, H * 0.48, 'Enter your name:', 38, '#dcd7eb', 0.5, 0.5, '#000', 2);
+        this._mText(W / 2, H * 0.22, t('name_new_record'), 110, '#ffd700', 0.5, 0.5, '#b40050', 5);
+        this._mText(W / 2, H * 0.36, t('name_time') + '  ' + formatTime(this.survivalTimer), 46, '#00ffc8', 0.5, 0.5, '#000', 3);
+        this._mText(W / 2, H * 0.48, t('name_enter'), 38, '#dcd7eb', 0.5, 0.5, '#000', 2);
 
         // Поле ввода + текст с курсором-подчёркиванием.
         const boxW = 760, boxH = 96, boxY = H * 0.58;
@@ -1194,43 +1199,43 @@ class MainScene extends Phaser.Scene {
         this._mText(W / 2, boxY, this.nameInput + '_', 50, '#ffffff', 0.5, 0.5, '#000', 2);
 
         if (errored) this._mText(W / 2, H * 0.66, this._nameError, 34, '#ff5078', 0.5, 0.5, '#000', 2);
-        this._mText(W / 2, H * 0.74, 'ENTER  -  Confirm        BACKSPACE  -  Erase', 30, '#7d78a0', 0.5, 0.5, '#000', 2);
+        this._mText(W / 2, H * 0.74, t('name_hint'), 30, '#7d78a0', 0.5, 0.5, '#000', 2);
     }
 
     _buildRenameInput() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x0a001e, 230 / 255).setOrigin(0, 0));
-        this._mText(W / 2, H * 0.20, 'RENAME PLAYER', 100, '#ffd700', 0.5, 0.5, '#b40050', 5);
-        this._mText(W / 2, H * 0.34, 'Current name:  ' + (this.save.playerName || '(not set)'), 40, '#00ffc8', 0.5, 0.5, '#000', 3);
-        this._mText(W / 2, H * 0.46, 'New name:', 38, '#dcd7eb', 0.5, 0.5, '#000', 2);
+        this._mText(W / 2, H * 0.20, t('rename_title'), 100, '#ffd700', 0.5, 0.5, '#b40050', 5);
+        this._mText(W / 2, H * 0.34, t('rename_current') + '  ' + (this.save.playerName || t('not_set')), 40, '#00ffc8', 0.5, 0.5, '#000', 3);
+        this._mText(W / 2, H * 0.46, t('rename_new'), 38, '#dcd7eb', 0.5, 0.5, '#000', 2);
 
         const boxW = 760, boxH = 96, boxY = H * 0.56;
         const errored = !!this._renameError;
         this._mAdd(this.add.rectangle(W / 2, boxY, boxW, boxH, 0x140028, 1).setOrigin(0.5, 0.5).setStrokeStyle(3, errored ? 0xff3264 : 0x9600ff));
         this._mText(W / 2, boxY, this.renameInput + '_', 50, '#ffffff', 0.5, 0.5, '#000', 2);
 
-        if (this._renameBusy) this._mText(W / 2, H * 0.64, 'Saving...', 34, '#ffd700', 0.5, 0.5, '#000', 2);
+        if (this._renameBusy) this._mText(W / 2, H * 0.64, t('rename_saving'), 34, '#ffd700', 0.5, 0.5, '#000', 2);
         else if (errored) this._mText(W / 2, H * 0.64, this._renameError, 34, '#ff5078', 0.5, 0.5, '#000', 2);
 
-        this._mText(W / 2, H * 0.74, 'Merges leaderboard records, keeps your best time per mode.', 26, '#7d78a0', 0.5, 0.5, '#000', 2);
-        this._mText(W / 2, H * 0.80, 'ENTER  -  Confirm        ESC  -  Cancel', 30, '#7d78a0', 0.5, 0.5, '#000', 2);
+        this._mText(W / 2, H * 0.74, t('rename_merge_note'), 26, '#7d78a0', 0.5, 0.5, '#000', 2);
+        this._mText(W / 2, H * 0.80, t('rename_hint'), 30, '#7d78a0', 0.5, 0.5, '#000', 2);
     }
 
     _buildLevelUp() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x0a001e, 220 / 255).setOrigin(0, 0));
-        this._mText(W / 2, 150, 'LEVEL UP!', 100, '#ffff00', 0.5, 0.5, '#ff0096', 5);
+        this._mText(W / 2, 150, t('levelup'), 100, '#ffff00', 0.5, 0.5, '#ff0096', 5);
         this.levelUpCards = [];
         for (let i = 0; i < 3; i++) {
             const uId = this.levelUpIds[i];
             const cx = W / 2 + (i - 1) * 450;
             const cy = H / 2 + 50;
             const rect = this._mAdd(this.add.rectangle(cx, cy, 400, 550, 0x140028, 240 / 255).setOrigin(0.5, 0.5).setStrokeStyle(5, 0x9600ff));
-            const title = this._mText(cx, cy - 230, UPGRADE_TITLES[uId], 35, '#00ffc8', 0.5, 0);
+            const title = this._mText(cx, cy - 230, t('upgrade_titles')[uId], 35, '#00ffc8', 0.5, 0);
             const icon = this._mAdd(this.add.sprite(cx, cy - 30, UPGRADE_ICONS[uId]).setOrigin(0.5, 0.5));
             const iscale = 180 / icon.width;
             icon.setScale(iscale);
-            const desc = this._mText(cx, cy + 110, UPGRADE_DESCS[uId], 25, '#ffffff', 0.5, 0);
+            const desc = this._mText(cx, cy + 110, t('upgrade_descs')[uId], 25, '#ffffff', 0.5, 0);
             let starsObj = null;
             const cnt = this.runUpgradeLevels[uId];
             if (cnt > 0) {
@@ -1249,7 +1254,7 @@ class MainScene extends Phaser.Scene {
     _buildAbilitySelect() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x080014, 210 / 255).setOrigin(0, 0));
-        this._mText(W / 2, 130, 'CHOOSE AN ABILITY', 80, '#dcb4ff', 0.5, 0.5, '#000', 4);
+        this._mText(W / 2, 130, t('ability_choose'), 80, '#dcb4ff', 0.5, 0.5, '#000', 4);
         const count = this.pendingAbilityCount;
         const gap = 430, cardW = 360, cardH = 560;
         const totalW = (count - 1) * gap;
@@ -1262,7 +1267,7 @@ class MainScene extends Phaser.Scene {
             const id = this.pendingAbilityIds[i];
             const cx = startX + i * gap;
             const rect = this._mAdd(this.add.rectangle(cx, cy, cardW, cardH, 0x120024, 245 / 255).setOrigin(0.5, 0.5).setStrokeStyle(4, Phaser.Display.Color.HexStringToColor(colHex[id]).color));
-            const title = this._mText(cx, cy - cardH / 2 + 28, ABILITY_NAMES[id], 38, colHex[id], 0.5, 0, '#000', 3);
+            const title = this._mText(cx, cy - cardH / 2 + 28, t('ability_names')[id], 38, colHex[id], 0.5, 0, '#000', 3);
             const objs = [rect, title];
             const baseSX = [1, 1];
             const iconKey = ABILITY_ICONS[id];
@@ -1274,9 +1279,9 @@ class MainScene extends Phaser.Scene {
             }
             const cd = ABILITY_COOLDOWNS[id];
             let desc = '';
-            if (id === 0) desc = 'Become invulnerable\nfor 2 seconds.\n\nCooldown: ' + cd + 's';
-            else if (id === 1) desc = 'Slam the ground to\ndamage and knock back\nnearby enemies.\n\nCooldown: ' + cd + 's';
-            else if (id === 2) desc = 'Unleash 12 vinyl discs\nin all directions.\n\nCooldown: ' + cd + 's';
+            if (id === 0) desc = t('ability_desc_0') + '\n\n' + t('cooldown') + ': ' + cd + 's';
+            else if (id === 1) desc = t('ability_desc_1') + '\n\n' + t('cooldown') + ': ' + cd + 's';
+            else if (id === 2) desc = t('ability_desc_2') + '\n\n' + t('cooldown') + ': ' + cd + 's';
             const descObj = this._mText(cx, cy - cardH / 2 + 295, desc, 22, '#c8c3dc', 0.5, 0, '#000', 2);
             const slot = this.pendingSlot;
             const keyObj = this._mText(cx, cy + cardH / 2 - 70, (slot >= 0 && slot < 3) ? keyLabels[slot] : '[?]', 32, '#00f0c8', 0.5, 0, '#000', 2);
@@ -1310,7 +1315,7 @@ class MainScene extends Phaser.Scene {
             if (ns !== -1 && ns !== this.selectedMenuIndex) { this.selectedMenuIndex = ns; this.rebuildMenu(); }
         } else if (st === GameState.SETTINGS) {
             let ns = -1;
-            for (let i = 0; i < 7; i++) if (hit(W / 2 - 300, H * 0.30 + i * 110 - 40, 600, 80)) ns = i;
+            for (let i = 0; i < 8; i++) if (hit(W / 2 - 300, H * 0.25 + i * 84 - 32, 600, 64)) ns = i;
             if (ns !== -1 && ns !== this.selectedSettingIndex) { this.selectedSettingIndex = ns; this.rebuildMenu(); }
         } else if (st === GameState.LOBBY) {
             let ns = -1;
@@ -1351,7 +1356,7 @@ class MainScene extends Phaser.Scene {
         } else if (st === GameState.LEADERBOARD) {
             if (hit(W / 2 - 150, H * 0.9 - 30, 300, 60)) this.setState(this.leaderboardFromMenu ? GameState.MENU : GameState.LOBBY);
         } else if (st === GameState.SETTINGS) {
-            for (let i = 0; i < 7; i++) if (hit(W / 2 - 300, H * 0.30 + i * 110 - 40, 600, 80)) { this.selectedSettingIndex = i; this._settingsActivate(); return; }
+            for (let i = 0; i < 8; i++) if (hit(W / 2 - 300, H * 0.25 + i * 84 - 32, 600, 64)) { this.selectedSettingIndex = i; this._settingsActivate(); return; }
         } else if (st === GameState.PAUSED) {
             for (let i = 0; i < 3; i++) if (hit(W / 2 - 250, H / 2 + 50 + i * 100 - 40, 500, 80)) { this.selectedPauseIndex = i; this._pauseActivate(); return; }
         } else if (st === GameState.LOBBY) {
@@ -1407,13 +1412,23 @@ class MainScene extends Phaser.Scene {
         else if (i === 2) { s.isFullscreen = !s.isFullscreen; if (s.isFullscreen) { if (!this.scale.isFullscreen) this.scale.startFullscreen(); } else if (this.scale.isFullscreen) this.scale.stopFullscreen(); this.saveGame(); this.rebuildMenu(); }
         else if (i === 3) { this._adjustVolume('sound', +1); }
         else if (i === 4) { this._adjustVolume('effects', +1); }
-        else if (i === 5) { this._openRename(); }
-        else if (i === 6) { this.saveGame(); this.setState(GameState.MENU); }
+        else if (i === 5) { this._toggleLanguage(); }
+        else if (i === 6) { this._openRename(); }
+        else if (i === 7) { this.saveGame(); this.setState(GameState.MENU); }
+    }
+
+    // Переключить язык интерфейса en<->ru, применить и сохранить.
+    _toggleLanguage() {
+        const s = this.save;
+        s.language = (s.language === 'ru') ? 'en' : 'ru';
+        setLanguage(s.language);
+        this.saveGame();
+        this.rebuildMenu();
     }
 
     _openRename() {
         if (!this.save.playerName) {
-            this.cheatMessage = 'No player name yet — set one by scoring first';
+            this.cheatMessage = t('cheat_noname');
             this.cheatMessageTimer = 3;
             this.rebuildMenu();
             return;
@@ -1429,7 +1444,7 @@ class MainScene extends Phaser.Scene {
         const oldName = this.save.playerName;
         const typed = this.renameInput.trim();
         if (!oldName) { this.setState(GameState.SETTINGS); return; }
-        if (!typed) { this._renameError = 'Enter a name'; this.rebuildMenu(); return; }
+        if (!typed) { this._renameError = t('err_enter_name'); this.rebuildMenu(); return; }
         if (typed === oldName) { this.setState(GameState.SETTINGS); return; }
         this._renameBusy = true;
         this._renameError = '';
@@ -1438,7 +1453,7 @@ class MainScene extends Phaser.Scene {
         RemoteLeaderboard.rename(oldName, typed, (ok) => {
             if (this.currentState !== GameState.RENAME_INPUT) return;
             this._renameBusy = false;
-            if (!ok) { this._renameError = 'Server error, try again'; this.rebuildMenu(); return; }
+            if (!ok) { this._renameError = t('err_server'); this.rebuildMenu(); return; }
             this._applyLocalRename(oldName, typed);
             this.save.playerName = typed;
             this.saveGame();
@@ -1517,19 +1532,20 @@ class MainScene extends Phaser.Scene {
             if (enter) { this.shop._buyAndNotify(); this.saveGame(); this.shop.redraw(); }
             if (esc) { this.audio.play('sfx_menu_click'); this.saveGame(); this.setState(GameState.LOBBY); }
         } else if (st === GameState.SETTINGS) {
-            if (up) { this.selectedSettingIndex = (this.selectedSettingIndex + 6) % 7; this.rebuildMenu(); }
-            if (down) { this.selectedSettingIndex = (this.selectedSettingIndex + 1) % 7; this.rebuildMenu(); }
+            if (up) { this.selectedSettingIndex = (this.selectedSettingIndex + 7) % 8; this.rebuildMenu(); }
+            if (down) { this.selectedSettingIndex = (this.selectedSettingIndex + 1) % 8; this.rebuildMenu(); }
             if (left && this.selectedSettingIndex === 1) { this.save.currentFpsIndex = (this.save.currentFpsIndex + 4) % 5; this.saveGame(); this.rebuildMenu(); }
             if (right && this.selectedSettingIndex === 1) { this.save.currentFpsIndex = (this.save.currentFpsIndex + 1) % 5; this.saveGame(); this.rebuildMenu(); }
             if (this.selectedSettingIndex === 3) { if (left) this._adjustVolume('sound', -1); if (right) this._adjustVolume('sound', +1); }
             if (this.selectedSettingIndex === 4) { if (left) this._adjustVolume('effects', -1); if (right) this._adjustVolume('effects', +1); }
+            if ((left || right) && this.selectedSettingIndex === 5) { this._toggleLanguage(); }
             if (enter) this._settingsActivate();
             if (esc) { this.saveGame(); this.setState(GameState.MENU); }
             // Чит-код 'givecoin'
             if (e.key && e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
                 this.cheatBuffer = (this.cheatBuffer + e.key.toLowerCase()).slice(-32);
                 if (this.cheatBuffer.indexOf('givecoin') !== -1) {
-                    this.save.totalCoins += 500; this.cheatMessage = 'Gave 500 coins'; this.cheatMessageTimer = 3;
+                    this.save.totalCoins += 500; this.cheatMessage = t('cheat_gave'); this.cheatMessageTimer = 3;
                     this.saveGame(); this.cheatBuffer = ''; this.rebuildMenu();
                 }
             }
