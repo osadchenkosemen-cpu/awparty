@@ -204,12 +204,12 @@ MainScene.prototype._runArtifacts = function() {
     }
 // Подписанный ряд иконок по центру cx, начиная с y. Возвращает следующий y.
 MainScene.prototype._buildIconRow = function(label, cx, y, entries) {
-        const ICON = 46, GAP = 12;
-        this._mText(cx, y, label, 20, '#8a86a0', 0.5, 0, '#000', 2);
-        const iconY = y + 28;
+        const ICON = 68, GAP = 18;
+        this._mText(cx, y, label, 24, '#9a96b0', 0.5, 0, '#000', 2);
+        const iconY = y + 34;
         if (!entries.length) {
-            this._mText(cx, iconY + ICON / 2, t('build_none'), 24, '#6a6680', 0.5, 0.5);
-            return iconY + ICON + 16;
+            this._mText(cx, iconY + ICON / 2, t('build_none'), 30, '#6a6680', 0.5, 0.5);
+            return iconY + ICON + 20;
         }
         const total = entries.length * ICON + (entries.length - 1) * GAP;
         let sx = cx - total / 2;
@@ -221,10 +221,10 @@ MainScene.prototype._buildIconRow = function(label, cx, y, entries) {
             } else {
                 this._mAdd(this.add.rectangle(tcx, tcy, ICON, ICON, 0x241a36, 1).setStrokeStyle(2, 0x5a4a78));
             }
-            if (e.badge) this._mText(sx + ICON, iconY + ICON, e.badge, 17, '#ffd200', 1, 1, '#321900', 3);
+            if (e.badge) this._mText(sx + ICON + 2, iconY + ICON + 2, e.badge, 24, '#ffd200', 1, 1, '#321900', 3);
             sx += ICON + GAP;
         }
-        return iconY + ICON + 16;
+        return iconY + ICON + 20;
     }
 
 MainScene.prototype._buildPause = function() {
@@ -232,9 +232,14 @@ MainScene.prototype._buildPause = function() {
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x0a001e, 205 / 255).setOrigin(0, 0));
         this._mText(W / 2, 70, t('pause_title'), 92, '#ffffff', 0.5, 0.5, '#000', 3);
 
-        // Левая колонка — статы персонажа.
-        const lx = 150, vx = 720;
-        this._mText(lx, 150, t('pause_stats'), 30, '#00ffc8', 0, 0.5, '#000', 2);
+        // Вертикальная полоска-разделитель по центру между статами и билдом.
+        const midX = W / 2, dTop = 150, dH = 415;
+        this._mAdd(this.add.rectangle(midX, dTop, 12, dH, 0x9664c8, 0.16).setOrigin(0.5, 0)); // свечение
+        this._mAdd(this.add.rectangle(midX, dTop, 3, dH, 0xc8a0ff, 0.9).setOrigin(0.5, 0));   // линия
+
+        // Статы — слева от центра (значения выровнены к разделителю).
+        const lx = midX - 410, vx = midX - 60;
+        this._mText((lx + vx) / 2, 150, t('pause_stats'), 30, '#00ffc8', 0.5, 0.5, '#000', 2);
         const fr = p.shootCooldown > 0 ? 1 / p.shootCooldown : 0;
         const stats = [
             [t('stat_damage'), '' + p.attackDamage],
@@ -253,8 +258,8 @@ MainScene.prototype._buildPause = function() {
             sy += 44;
         }
 
-        // Правая колонка — билд (иконки карт/способностей/артефактов).
-        const cx = W * 0.73;
+        // Билд — справа от центра (иконки карт/способностей/артефактов).
+        const cx = midX + 300;
         this._mText(cx, 150, t('pause_build'), 30, '#00ffc8', 0.5, 0.5, '#000', 2);
         let by = 200;
         by = this._buildIconRow(t('build_cards'), cx, by, this._runCards());

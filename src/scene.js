@@ -853,7 +853,7 @@ class MainScene extends Phaser.Scene {
             if (e.type === EnemyType.GOBLIN) {
                 for (let i = 0; i < 30; i++) this.particles.push(this.spawnParticle(ex, ey, randInt(2) === 0 ? rgb(180, 0, 255) : rgb(255, 0, 200)));
                 for (let k = 0; k < 3; k++) this.gems.push(this.spawnGem(ex - 24 + randInt(40) - 20, ey + randInt(40) - 20));
-                this.coins.push(this.spawnCoin(ex + 38, ey));
+                if (randInt(100) < 50) this.coins.push(this.spawnCoin(ex + 38, ey)); // монет вдвое меньше
                 if (randInt(100) < 35) this.vinyls.push(this.spawnVinyl(ex, ey));
                 continue;
             }
@@ -894,7 +894,7 @@ class MainScene extends Phaser.Scene {
                 // Гем и монета разнесены в стороны, чтобы опыт не лежал под монетой.
                 const off = 24;
                 this.gems.push(this.spawnGem(ex - off, ey));
-                if (randInt(100) < 30) this.coins.push(this.spawnCoin(ex + off, ey));
+                if (randInt(100) < 15) this.coins.push(this.spawnCoin(ex + off, ey)); // монет вдвое меньше (30%→15%)
                 if (randInt(100) < 2) this.vinyls.push(this.spawnVinyl(ex, ey));
             }
         }
@@ -1016,9 +1016,9 @@ class MainScene extends Phaser.Scene {
         const W = C.ARENA_WIDTH, H = C.ARENA_HEIGHT, tm = this.globalTime;
         const step = 26;
         const k = (Math.PI * 2) / 220;                 // длина волны ~220px
-        const speed = 5;                                // скорость бегущей волны
-        const A = 16 + 10 * (0.5 + 0.5 * Math.sin(tm * 3)); // амплитуда + пульс
-        const pulse = 0.5 + 0.5 * Math.sin(tm * 6);
+        const speed = 2;                                // скорость бегущей волны (медленнее)
+        const A = 16 + 10 * (0.5 + 0.5 * Math.sin(tm * 1.6)); // амплитуда + плавный пульс
+        const pulse = 0.5 + 0.5 * Math.sin(tm * 3);
         const col = rgb(255, 20 + 80 * pulse, 80 + 60 * pulse); // неон: красный<->розовый
         const stroke = (pts, width, alpha) => {
             g.lineStyle(width, col, alpha);
