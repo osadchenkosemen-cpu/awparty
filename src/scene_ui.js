@@ -115,6 +115,32 @@ MainScene.prototype._buildSettings = function() {
                 sel ? 46 : 38, sel ? '#ffffff' : '#00ffc8', 0.5, 0.5, sel ? '#ff0096' : '#000', sel ? 3 : 2);
         }
         if (this.cheatMessageTimer > 0) this._mText(50, H - 110, this.cheatMessage, 28, '#ffff00', 0, 0);
+
+        // Кнопка «Сбросить персонажа» — правый нижний угол (мышь). Имя/настройки сохраняются.
+        const rr = this._settingsResetRect();
+        const confirm = !!this._resetConfirm, hov = !!this._resetHover;
+        this._mAdd(this.add.rectangle(rr.x, rr.y, rr.w, rr.h, confirm ? 0x4a1020 : 0x1a1030, 1)
+            .setOrigin(0, 0).setStrokeStyle(2, confirm ? 0xff3264 : (hov ? 0xff7a7a : 0x9664c8)));
+        this._mText(rr.x + rr.w / 2, rr.y + rr.h / 2, confirm ? t('reset_confirm') : t('set_reset'),
+            confirm ? 22 : 24, confirm ? '#ff9aa0' : (hov ? '#ffffff' : '#d8c0ee'), 0.5, 0.5);
+    }
+
+    // Прямоугольник кнопки сброса персонажа (правый нижний угол экрана настроек).
+MainScene.prototype._settingsResetRect = function() {
+        const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT, w = 380, h = 56;
+        return { x: W - w - 30, y: H - h - 30, w: w, h: h };
+    }
+
+    // Клик по кнопке сброса: первый раз — подтверждение, второй — собственно сброс.
+MainScene.prototype._settingsResetClick = function() {
+        this.audio.play('sfx_menu_click');
+        if (!this._resetConfirm) { this._resetConfirm = true; this._resetConfirmTimer = 4; this.rebuildMenu(); return; }
+        this._resetConfirm = false; this._resetConfirmTimer = 0;
+        SaveSystem.resetProgress(this.save);
+        this.saveGame();
+        if (this.audio) this.audio.syncFromSave();
+        this.cheatMessage = t('reset_done'); this.cheatMessageTimer = 3;
+        this.rebuildMenu();
     }
 
 MainScene.prototype._buildLeaderboard = function() {
@@ -416,7 +442,13 @@ MainScene.prototype.onPointerMove = function(p) {
         } else if (st === GameState.SETTINGS) {
             let ns = -1;
             for (let i = 0; i < 9; i++) if (hit(W / 2 - 300, H * 0.25 + i * 84 - 32, 600, 64)) ns = i;
-            if (ns !== -1 && ns !== this.selectedSettingIndex) { this.selectedSettingIndex = ns; this.rebuildMenu(); }
+            // Ховер кнопки сброса (правый нижний угол).
+            const rr = this._settingsResetRect();
+            const rh = (x >= rr.x && x <= rr.x + rr.w && y >= rr.y && y <= rr.y + rr.h);
+            let changed = false;
+            if (ns !== -1 && ns !== this.selectedSettingIndex) { this.selectedSettingIndex = ns; changed = true; }
+            if (rh !== !!this._resetHover) { this._resetHover = rh; changed = true; }
+            if (changed) this.rebuildMenu();
         } else if (st === GameState.LOBBY) {
             let ns = -1;
             for (let i = 0; i < 3; i++) if (hit(W * 0.7 - 250, H * 0.45 + i * 110 - 40, 500, 80)) ns = i;
@@ -456,6 +488,8 @@ MainScene.prototype.onPointerDown = function(p) {
         } else if (st === GameState.LEADERBOARD) {
             if (hit(W / 2 - 150, H * 0.9 - 30, 300, 60)) this.setState(this.leaderboardFromMenu ? GameState.MENU : GameState.LOBBY);
         } else if (st === GameState.SETTINGS) {
+            const rr = this._settingsResetRect();
+            if (x >= rr.x && x <= rr.x + rr.w && y >= rr.y && y <= rr.y + rr.h) { this._settingsResetClick(); return; }
             for (let i = 0; i < 9; i++) if (hit(W / 2 - 300, H * 0.25 + i * 84 - 32, 600, 64)) { this.selectedSettingIndex = i; this._settingsActivate(); return; }
         } else if (st === GameState.PAUSED) {
             for (let i = 0; i < 3; i++) if (hit(W / 2 - 250, H / 2 + 50 + i * 100 - 40, 500, 80)) { this.selectedPauseIndex = i; this._pauseActivate(); return; }

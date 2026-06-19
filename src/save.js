@@ -101,6 +101,26 @@ const SaveSystem = {
         try { localStorage.setItem(SAVE_KEY, JSON.stringify(blob)); } catch (e) {}
     },
 
+    // Сброс «персонажа»: обнуляет прогресс (монеты, перм-прокачку, артефакты),
+    // СОХРАНЯЯ ник, язык и настройки устройства. Мутирует объект на месте, чтобы
+    // ссылки (например, shop.s) остались валидными.
+    resetProgress(data) {
+        const d = this.defaults();
+        data.totalCoins = 0;
+        data.permMaxHp = d.permMaxHp;   // 100
+        data.permDamage = d.permDamage; // 1
+        data.permSpeed = d.permSpeed;   // 220
+        data.permDashLevel = 0;
+        data.permCritChance = 0;
+        data.permRegen = 0;
+        data.permArmor = 0;
+        data.permMagnet = 0;
+        data.permMultishot = 0;
+        data.permArtifacts = 0;
+        data.permActiveArtifacts = 0;
+        return data;
+    },
+
     // Поля мета-прогресса для облачного бэкапа (без настроек устройства: громкость,
     // FPS, язык, fullscreen — они локальные и не переносятся).
     META_FIELDS: [

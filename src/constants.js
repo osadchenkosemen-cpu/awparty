@@ -110,9 +110,9 @@ const UPGRADE_ICONS = ['icon_fire', 'icon_dmg', 'icon_speed', 'icon_magnet', 'ic
 // id 5 = блейдмейл, id 6 = прострел.
 const LEGENDARY_UPGRADE_IDS = [5, 6];
 // Шанс, что конкретная легендарная карта вообще попадёт в пул выбора при ап-левеле.
-// 0.27 даёт ~25% левел-апов, на которых показывается хотя бы одна легендарка
-// (с учётом последующего отбора 3 карт из пула).
-const LEGENDARY_CARD_CHANCE = 0.27;
+// 0.13 даёт ~12% левел-апов, на которых показывается хотя бы одна легендарка
+// (с учётом последующего отбора 3 карт из пула). Понижено с 0.27 — легендарки реже.
+const LEGENDARY_CARD_CHANCE = 0.13;
 
 // Ability data (AbilitySelectUI.cpp). Названия — в i18n.js: ability_names.
 const ABILITY_COOLDOWNS = { 0: 25, 1: 15, 2: 12, 3: 14 };

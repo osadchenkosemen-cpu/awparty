@@ -47,6 +47,9 @@ class MainScene extends Phaser.Scene {
         this.arenaBorder = this.addWorld(this.add.rectangle(0, 0, C.ARENA_WIDTH, C.ARENA_HEIGHT).setOrigin(0, 0));
         this.arenaBorder.setStrokeStyle(15, 0xff0032);
         this.arenaBorder.isFilled = false;
+        // Стены рисуются как анимированные звуковые волны в drawWorldFx — статичную
+        // красную рамку прячем (оставляем объект, чтобы не трогать остальной код).
+        this.arenaBorder.setVisible(false);
 
         // Фоновая графика мира (трейлы пуль, кольцо слэма)
         this.worldFx = this.addWorld(this.add.graphics());
@@ -344,6 +347,8 @@ class MainScene extends Phaser.Scene {
         this.currentState = ns;
         // Глушим зацикленный сигнал тревоги при уходе из боя (оверлей-функция там не вызывается).
         if (ns !== GameState.PLAYING && this._warnSound) { this.audio.stopLoopSfx(this._warnSound); this._warnSound = null; }
+        // Сбрасываем подтверждение/ховер кнопки сброса при уходе из настроек.
+        if (ns !== GameState.SETTINGS) { this._resetConfirm = false; this._resetConfirmTimer = 0; this._resetHover = false; }
         this.rebuildMenu();
         this.updateCursor();
         if (this.audio) {
@@ -408,6 +413,11 @@ class MainScene extends Phaser.Scene {
         if (this.currentState === GameState.LEADERBOARD) return;
 
         if (this.cheatMessageTimer > 0) { this.cheatMessageTimer -= dt; if (this.cheatMessageTimer < 0) this.cheatMessageTimer = 0; }
+        // Сброс подтверждения кнопки «Сбросить персонажа», если игрок не нажал второй раз.
+        if (this._resetConfirmTimer > 0) {
+            this._resetConfirmTimer -= dt;
+            if (this._resetConfirmTimer <= 0) { this._resetConfirmTimer = 0; this._resetConfirm = false; if (this.currentState === GameState.SETTINGS) this.rebuildMenu(); }
+        }
 
         if (this.currentState !== GameState.PLAYING || this.isGameOver) return;
 
@@ -996,10 +1006,38 @@ class MainScene extends Phaser.Scene {
         this.setState(GameState.PLAYING);
     }
 
+    // Стены арены в виде бегущих звуковых волн (вместо статичной красной рамки).
+    // Рисуем по 4 краям синусоиду, смещённую внутрь; фаза бежит со временем,
+    // амплитуда и цвет пульсируют (как аудио-визуализация).
+    _drawSoundWaveWalls(g) {
+        const W = C.ARENA_WIDTH, H = C.ARENA_HEIGHT, tm = this.globalTime;
+        const step = 26;
+        const k = (Math.PI * 2) / 220;                 // длина волны ~220px
+        const speed = 5;                                // скорость бегущей волны
+        const A = 16 + 10 * (0.5 + 0.5 * Math.sin(tm * 3)); // амплитуда + пульс
+        const pulse = 0.5 + 0.5 * Math.sin(tm * 6);
+        const col = rgb(255, 20 + 80 * pulse, 80 + 60 * pulse); // неон: красный<->розовый
+        const stroke = (pts, width, alpha) => {
+            g.lineStyle(width, col, alpha);
+            g.beginPath();
+            g.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length; i++) g.lineTo(pts[i].x, pts[i].y);
+            g.strokePath();
+        };
+        const edges = [];
+        let pts;
+        pts = []; for (let x = 0; x <= W; x += step) pts.push({ x: x, y: 6 + A * (1 + Math.sin(k * x + tm * speed)) }); edges.push(pts);          // верх
+        pts = []; for (let x = 0; x <= W; x += step) pts.push({ x: x, y: H - 6 - A * (1 + Math.sin(k * x - tm * speed)) }); edges.push(pts);      // низ
+        pts = []; for (let y = 0; y <= H; y += step) pts.push({ x: 6 + A * (1 + Math.sin(k * y + tm * speed)), y: y }); edges.push(pts);          // лево
+        pts = []; for (let y = 0; y <= H; y += step) pts.push({ x: W - 6 - A * (1 + Math.sin(k * y - tm * speed)), y: y }); edges.push(pts);      // право
+        for (const e of edges) { stroke(e, 12, 0.16); stroke(e, 4, 0.9); } // мягкое свечение + яркое ядро
+    }
+
     // ===================== РЕНДЕР МИРА (FX) =====================
     drawWorldFx() {
         const g = this.worldFx;
         g.clear();
+        this._drawSoundWaveWalls(g); // стены-границы в виде звуковых волн
         // Трейлы пуль (PlayState.cpp: круги радиусом 8*ratio, alpha 180*ratio)
         for (const b of this.bullets) {
             const h = b.history;

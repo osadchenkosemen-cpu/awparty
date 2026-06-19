@@ -123,6 +123,7 @@ class Player {
     gainXP(amount) { this.currentXP += amount; }
 
     takeDamage(amount) {
+        // Рывок даёт неуязвимость на время анимации дэша (isDashing).
         if (this.iFrames <= 0 && !this.isDashing && !this.isInvincible) {
             if (this.ironSkinCharges > 0) { this.ironSkinCharges--; this.iFrames = 0.3; return; }
             // Броня — процентное снижение урона (−20% за уровень). Дробный остаток копится,
@@ -371,7 +372,8 @@ class Enemy {
         this.isBoss = true;
         this.type = EnemyType.BOSS;
         this.hp = 50; this.maxHp = 50; this.speed = 130; this.damage = 50;
-        this.sprite.setScale(this.baseScale * 3, this.baseScale * 3);
+        this.bossScale = this.baseScale * 3; // базовый масштаб (для анимации ходьбы/сброса)
+        this.sprite.setScale(this.bossScale, this.bossScale);
     }
 
     makeBoss2(boss2TexKey) {
@@ -381,7 +383,8 @@ class Enemy {
         this.sprite.setOrigin(0.5, 0.5);
         this.baseScale = 90 / this.sprite.width;
         this.hp = 100; this.maxHp = 100; this.speed = 150; this.damage = 60;
-        this.sprite.setScale(this.baseScale * 3.5, this.baseScale * 3.5);
+        this.bossScale = this.baseScale * 3.5;
+        this.sprite.setScale(this.bossScale, this.bossScale);
     }
 
     // STROBE — босс 3 этапа (лазерный VJ). Текстура-плейсхолдер (boss2), тонируется
@@ -393,7 +396,8 @@ class Enemy {
         this.sprite.setOrigin(0.5, 0.5);
         this.baseScale = 90 / this.sprite.width;
         this.hp = 180; this.maxHp = 180; this.speed = 140; this.damage = 40;
-        this.sprite.setScale(this.baseScale * 3.2, this.baseScale * 3.2);
+        this.bossScale = this.baseScale * 3.2;
+        this.sprite.setScale(this.bossScale, this.bossScale);
         this.strobeState = 'ROAM';
         this.strobeTimer = 0;
         this.strobeAttack = -1;
@@ -409,11 +413,16 @@ class Enemy {
         const enraged = this.hp <= this.maxHp / 2;
         const tf = enraged ? 0.7 : 1.0; // ускорение таймеров в ярости
 
+        const bs = this.bossScale || this.baseScale * 3.2;
         if (this.strobeState === 'ROAM') {
             const dir = normalize(px - s.x, py - s.y);
             s.x += dir.x * this.speed * dt;
             s.y += dir.y * this.speed * dt;
             this.walkTimer += dt * 8;
+            // Анимация передвижения: «шаг» (squash-stretch) + лёгкое покачивание.
+            const bob = Math.sin(this.walkTimer) * 0.05;
+            s.setScale(bs * (1 - bob * 0.4), bs * (1 + bob));
+            s.angle = Math.sin(this.walkTimer * 0.6) * 6;
             this.strobeTimer += dt;
             if (this.strobeTimer >= 2.5 * tf) {
                 this.strobeAttack = (this.strobeAttack + 1) % 3;
@@ -425,6 +434,7 @@ class Enemy {
                 this.burstCount = 0;
                 this.burstTimer = 0;
                 this._teleported = false;
+                s.setScale(bs, bs); s.angle = 0; // снять «шаг» перед атакой
             }
         } else if (this.strobeState === 'TELEGRAPH') {
             this.strobeTimer += dt;
@@ -535,6 +545,7 @@ class Enemy {
             this._updateStrobe(dt, px, py);
         } else if (this.type === EnemyType.BOSS) {
             this.justFiredVolley = false;
+            const bs = this.bossScale || this.baseScale * 3; // базовый масштаб для анимации/сброса
             const enraged = this.isBoss2 && (this.hp <= this.maxHp / 2);
             const walkDuration = enraged ? 2.5 : 4.0;
             const prepDuration = enraged ? 0.6 : 0.8;
@@ -548,6 +559,9 @@ class Enemy {
                 s.y += dir.y * this.speed * dt;
                 this.walkTimer += dt * 10;
                 s.angle = Math.sin(this.walkTimer) * 5;
+                // Анимация ходьбы: вертикальный «шаг» с приседанием/растяжением (squash-stretch).
+                const bob = Math.sin(this.walkTimer * 1.7) * 0.06;
+                s.setScale(bs * (1 - bob * 0.4), bs * (1 + bob));
                 this.bossTimer += dt;
                 if (this.bossTimer >= walkDuration) {
                     this.bossState = BossState.PREPARING;
@@ -558,12 +572,14 @@ class Enemy {
             } else if (this.bossState === BossState.PREPARING) {
                 this.bossTimer += dt;
                 s.angle = Math.sin(this.bossTimer * 60) * 15;
+                s.setScale(bs, bs); // снять «шаг» ходьбы
                 if (this.bossTimer >= prepDuration) { this.bossState = BossState.JUMPING; this.bossTimer = 0; }
             } else if (this.bossState === BossState.JUMPING) {
                 this.bossTimer += dt;
                 s.x += this.jumpDir.x * dashSpeed * dt;
                 s.y += this.jumpDir.y * dashSpeed * dt;
                 s.angle += 1000 * dt;
+                s.setScale(bs, bs);
                 if (this.bossTimer >= 0.4) {
                     this.bossState = BossState.RECOVERING;
                     this.bossTimer = 0;
@@ -572,6 +588,7 @@ class Enemy {
                 }
             } else if (this.bossState === BossState.RECOVERING) {
                 this.bossTimer += dt;
+                s.setScale(bs, bs);
                 if (this.bossTimer >= recoverDuration) { this.bossState = BossState.WALKING; this.bossTimer = 0; }
             }
         }

@@ -186,6 +186,11 @@ const I18N = {
         cloud_notfound: 'No backup found for this nick',
         cloud_offline: 'Cloud not available',
         cloud_hint: 'ENTER  -  Restore        ESC  -  Cancel',
+
+        // --- Сброс персонажа (кнопка в настройках) ---
+        set_reset: 'Reset Character',
+        reset_confirm: 'Click again to reset',
+        reset_done: 'Character reset (name kept)',
     },
 
     ru: {
@@ -368,6 +373,11 @@ const I18N = {
         cloud_notfound: 'Бэкап для этого ника не найден',
         cloud_offline: 'Облако недоступно',
         cloud_hint: 'ENTER  -  Восстановить        ESC  -  Отмена',
+
+        // --- Сброс персонажа (кнопка в настройках) ---
+        set_reset: 'Сбросить персонажа',
+        reset_confirm: 'Нажми ещё раз для сброса',
+        reset_done: 'Персонаж сброшен (имя сохранено)',
     },
 };
 
