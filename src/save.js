@@ -39,8 +39,12 @@ const SaveSystem = {
         if (!raw) return d;
         let b;
         try { b = JSON.parse(raw); } catch (e) { return d; }
+        return Object.assign(d, this._validate(b));
+    },
 
-        // Валидация/клэмпы — как в Game::loadGameData
+    // Валидация/клэмпы полей сейва (как в Game::loadGameData). Мутирует и возвращает b.
+    // Вынесено отдельно, чтобы переиспользовать при применении облачного бэкапа.
+    _validate(b) {
         if (b.currentFpsIndex < 0 || b.currentFpsIndex > 4) b.currentFpsIndex = 1;
         if (!(b.soundVolume >= 0 && b.soundVolume <= 100)) b.soundVolume = 40;
         if (!(b.effectsVolume >= 0 && b.effectsVolume <= 100)) b.effectsVolume = 60;
@@ -69,8 +73,7 @@ const SaveSystem = {
                 else activeCnt++;
             }
         }
-
-        return Object.assign(d, b);
+        return b;
     },
 
     save(data) {
@@ -96,6 +99,34 @@ const SaveSystem = {
             permActiveArtifacts: data.permActiveArtifacts,
         };
         try { localStorage.setItem(SAVE_KEY, JSON.stringify(blob)); } catch (e) {}
+    },
+
+    // Поля мета-прогресса для облачного бэкапа (без настроек устройства: громкость,
+    // FPS, язык, fullscreen — они локальные и не переносятся).
+    META_FIELDS: [
+        'totalCoins', 'permMaxHp', 'permDamage', 'permSpeed', 'permDashLevel',
+        'permCritChance', 'permRegen', 'permArmor', 'permMagnet', 'permMultishot',
+        'permArtifacts', 'permActiveArtifacts',
+    ],
+
+    // Снимок мета-прогресса для отправки в облако.
+    cloudBlob(data) {
+        const out = {};
+        for (const f of this.META_FIELDS) out[f] = data[f];
+        return out;
+    },
+
+    // Применить облачный блоб к локальному сейву (мутирует на месте). Прогон через
+    // load() даёт те же клэмпы/валидацию, что и при обычной загрузке; настройки
+    // устройства из локального сейва сохраняются.
+    applyCloudMeta(data, blob) {
+        if (!blob || typeof blob !== 'object') return false;
+        const tmp = Object.assign(this.defaults(), data);
+        for (const f of this.META_FIELDS) if (blob[f] !== undefined) tmp[f] = blob[f];
+        // Переиспользуем валидацию load(): сериализуем во временное хранилище-клон.
+        const validated = this._validate(tmp);
+        for (const f of this.META_FIELDS) data[f] = validated[f];
+        return true;
     },
 
     // Таблица рекордов: массив из 10 записей { name, time, day, month, year }.

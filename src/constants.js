@@ -79,6 +79,7 @@ const GameState = {
     NAME_INPUT: 'NAME_INPUT',
     RENAME_INPUT: 'RENAME_INPUT',
     LEADERBOARD: 'LEADERBOARD',
+    CLOUD_RESTORE: 'CLOUD_RESTORE', // ввод ника для восстановления прогресса из облака
 };
 
 // GamePhase enum (Game.h)

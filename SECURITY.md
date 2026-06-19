@@ -35,46 +35,123 @@ RPC обязан, как минимум:
 - Слияние записей по лучшему времени при коллизии нового имени (уже учтено клиентом
   как fallback, но решающее слово — за сервером).
 
-## Пример усиленной `submit_score` (PL/pgSQL)
+## Готовая миграция (выполнить в Supabase → SQL Editor)
+
+> ⚠️ **Перед запуском на боевом проекте:** сделай бэкап таблицы (или прогони на копии/
+> dev-проекте). Скрипт предполагает таблицу `public.leaderboard` со столбцами
+> `name text`, `mode text`, `time numeric`, `created_at timestamptz` и существующие
+> RPC `submit_score`/`rename_player` (их вызывает клиент). Сверь имена столбцов со
+> своей схемой. Включение RLS меняет доступ к таблице — проверь, что чтение топа
+> и отправка результата работают после миграции. Скрипт идемпотентен (можно
+> повторять).
 
 ```sql
-create or replace function submit_score(p_name text, p_time numeric, p_mode text)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_name text;
-  v_mode text;
+-- ============================================================================
+-- AwParty — защита общей таблицы рекордов. Выполнить целиком.
+-- ============================================================================
+
+-- 0. Уникальность «одна запись на игрока в режиме» (нужно для on conflict).
+create unique index if not exists leaderboard_name_mode_key
+  on public.leaderboard (name, mode);
+
+-- 1. RLS: anon может только ЧИТАТЬ. Прямая запись запрещена — только через RPC ниже.
+alter table public.leaderboard enable row level security;
+
+drop policy if exists "anon read leaderboard" on public.leaderboard;
+create policy "anon read leaderboard"
+  on public.leaderboard for select to anon using (true);
+-- (намеренно НЕТ insert/update/delete-политик для anon)
+
+-- 2. submit_score: валидирует вход, хранит лучшее время на (name, mode).
+create or replace function public.submit_score(p_name text, p_time numeric, p_mode text)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_name text; v_mode text;
 begin
-  -- режим — из белого списка
   v_mode := case when p_mode = 'hardcore' then 'hardcore' else 'normal' end;
 
-  -- время: конечное, в разумных пределах (0..6 часов)
-  if p_time is null or p_time <> p_time /* NaN */ or p_time < 0 or p_time > 21600 then
+  -- время: конечное неотрицательное, не больше 6 часов (отсекает накрутку)
+  if p_time is null or p_time <> p_time or p_time < 0 or p_time > 21600 then
     raise exception 'invalid time';
   end if;
 
-  -- имя: убрать управляющие символы/переводы строк, обрезать длину
-  v_name := regexp_replace(coalesce(p_name, ''), '[[:cntrl:]]', '', 'g');
-  v_name := btrim(v_name);
+  -- имя: убрать управляющие символы, обрезать до 20
+  v_name := left(btrim(regexp_replace(coalesce(p_name, ''), '[[:cntrl:]]', '', 'g')), 20);
   if v_name = '' then v_name := 'Anonymous'; end if;
-  v_name := left(v_name, 20);
 
-  -- одна запись на игрока в режиме, хранит лучшее время
   insert into leaderboard (name, mode, time, created_at)
   values (v_name, v_mode, p_time, now())
-  on conflict (name, mode)
-  do update set time = greatest(leaderboard.time, excluded.time),
-                created_at = case when excluded.time > leaderboard.time
-                                  then now() else leaderboard.created_at end;
-end;
-$$;
+  on conflict (name, mode) do update
+    set time = greatest(leaderboard.time, excluded.time),
+        created_at = case when excluded.time > leaderboard.time
+                          then now() else leaderboard.created_at end;
+end; $$;
+
+-- 3. rename_player: проверка имени + слияние по лучшему времени в каждом режиме.
+create or replace function public.rename_player(p_old text, p_new text)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_new text;
+begin
+  v_new := left(btrim(regexp_replace(coalesce(p_new, ''), '[[:cntrl:]]', '', 'g')), 20);
+  if v_new = '' then raise exception 'invalid new name'; end if;
+  if p_old is null or btrim(p_old) = '' then raise exception 'invalid old name'; end if;
+  if v_new = p_old then return; end if;
+
+  -- перенести строки старого имени под новое, слив лучшее время по режимам
+  insert into leaderboard (name, mode, time, created_at)
+    select v_new, o.mode, o.time, o.created_at from leaderboard o where o.name = p_old
+  on conflict (name, mode) do update
+    set time = greatest(leaderboard.time, excluded.time),
+        created_at = case when excluded.time > leaderboard.time
+                          then excluded.created_at else leaderboard.created_at end;
+  delete from leaderboard where name = p_old;
+end; $$;
+
+-- 4. Права: вызывать RPC может anon; тело выполняется с правами владельца (definer).
+grant execute on function public.submit_score(text, numeric, text) to anon;
+grant execute on function public.rename_player(text, text) to anon;
 ```
 
-(Для `on conflict (name, mode)` нужен уникальный индекс на `(name, mode)`.)
+Самое важное против накрутки — пункты 1 (RLS, нет прямой записи) и 2 (потолок `time`).
+Пункты 3–4 — для целостности переименования и доступа к RPC.
 
-Rate limiting удобнее всего вынести на уровень Supabase Edge Functions или сетевого
-прокси; в самой RPC можно дополнительно ограничивать частоту по таблице-журналу.
+Rate limiting (защита от заливки таблицы спамом) тут не покрыт — его удобнее вынести
+на уровень Supabase Edge Functions / сетевого прокси, либо ограничивать в RPC по
+таблице-журналу вызовов.
+
+## Облачные сейвы (бэкап прогресса по нику)
+
+Опциональная фича: мета-прогресс (`totalCoins`, `perm*`, артефакты) бэкапится в
+облако по нику. Клиент — [src/cloud_save.js](src/cloud_save.js).
+
+> ⚠️ **Модель «по нику, без аутентификации».** Кто знает чужой ник, может прочитать
+> и **перезаписать** его бэкап. Это осознанный компромисс ради простоты (без логина).
+> Если нужна защита — добавь ключ/PIN: храни его в строке сейва и проверяй внутри
+> `SECURITY DEFINER`-RPC `cloud_save(name, key, blob)` / `cloud_load(name, key)`,
+> закрыв таблицу от прямого доступа `anon` (как сделано для `leaderboard`).
+
+Миграция для **открытой** модели (как реализовано в коде):
+
+```sql
+-- Таблица облачных сейвов: одна строка на ник.
+create table if not exists public.cloud_saves (
+  name       text primary key,
+  blob       jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.cloud_saves enable row level security;
+
+-- Открытая модель: anon может читать, вставлять и обновлять по нику.
+drop policy if exists "cloud read"   on public.cloud_saves;
+drop policy if exists "cloud insert" on public.cloud_saves;
+drop policy if exists "cloud update" on public.cloud_saves;
+create policy "cloud read"   on public.cloud_saves for select to anon using (true);
+create policy "cloud insert" on public.cloud_saves for insert to anon with check (true);
+create policy "cloud update" on public.cloud_saves for update to anon using (true) with check (true);
+```
+
+Клиент шлёт `POST` с заголовком `Prefer: resolution=merge-duplicates` (upsert по
+первичному ключу `name`) и читает `GET ...?name=eq.<ник>`. Пока таблицы/политик нет,
+фича просто молча не работает (бэкап/восстановление вернут ошибку), на остальную
+игру не влияет.
 

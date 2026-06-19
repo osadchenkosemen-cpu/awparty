@@ -172,7 +172,31 @@ class MainScene extends Phaser.Scene {
     // ===================== ХЕЛПЕРЫ =====================
     addWorld(o) { this.worldLayer.add(o); return o; }
     addUI(o) { this.uiLayer.add(o); return o; }
-    saveGame() { SaveSystem.save(this.save); }
+    saveGame() { SaveSystem.save(this.save); this._scheduleCloudBackup(); }
+
+    // Авто-бэкап мета-прогресса в облако (если задан ник). Дебаунс: серия сохранений
+    // (покупки в магазине и т.п.) схлопывается в один пуш через 2 с после последнего.
+    _scheduleCloudBackup() {
+        if (!CloudSave.configured() || !this.save.playerName) return;
+        if (this._cloudBackupTimer) clearTimeout(this._cloudBackupTimer);
+        this._cloudBackupTimer = setTimeout(() => {
+            this._cloudBackupTimer = null;
+            CloudSave.push(this.save.playerName, SaveSystem.cloudBlob(this.save));
+        }, 2000);
+    }
+
+    // Восстановить прогресс из облака по нику. cb('ok'|'notfound'|'offline').
+    restoreFromCloud(nick, cb) {
+        CloudSave.pull(nick, (res) => {
+            if (res === null) { cb('offline'); return; }
+            if (res === 'NOTFOUND') { cb('notfound'); return; }
+            SaveSystem.applyCloudMeta(this.save, res);  // мутирует this.save на месте (shop.s остаётся валиден)
+            this.save.playerName = (nick || '').slice(0, 20); // ник закрепляется за устройством
+            this.saveGame();
+            if (this.audio) this.audio.syncFromSave();
+            cb('ok');
+        });
+    }
     hex(c) { return '#' + ('000000' + c.toString(16)).slice(-6); }
 
     // --- Фабрики из пулов: берут из пула (reinit) или создают новый ---
@@ -268,6 +292,7 @@ class MainScene extends Phaser.Scene {
 
         p.level = 1; p.currentXP = 0; p.xpToNextLevel = 5; p.shootCooldown = 0.45;
         this.regenTimer = 0; this.shotsFired = 0;
+        this.killCount = 0; this.coinsThisRun = 0; // статистика забега (для паузы/итогов)
         p.sprite.setPosition(C.ARENA_WIDTH / 2, C.ARENA_HEIGHT / 2);
         p.isInvincible = false; p.invincibilityTimer = 0;
         p.bladeMail = false; p.pierce = false; // карточки: блейдмейл (шипы) / прострел (пробитие)
@@ -646,6 +671,7 @@ class MainScene extends Phaser.Scene {
                 const whole = Math.floor(this.coinCarry);
                 s.totalCoins += whole;
                 this.coinCarry -= whole;
+                this.coinsThisRun += whole;
             }
         }
         this._filterRelease(this.coins, 'coin', c => c.isCollected);
@@ -800,6 +826,7 @@ class MainScene extends Phaser.Scene {
         const s = this.save, p = this.player;
         for (const e of this.enemies) {
             if (e.hp > 0) continue;
+            this.killCount++;
             if ((s.permActiveArtifacts >> 3) & 1) {
                 // +0.5% крита за килл, максимум +5% к базе (10 стаков).
                 const cap = p.baseCritChance + 0.05;

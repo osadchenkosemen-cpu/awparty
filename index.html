@@ -70,13 +70,13 @@
          script.async = false сохраняет порядок выполнения вставленных скриптов. -->
     <script>
         (function () {
-            var ASSET_VER = '56'; // ← единственное место для бампа версии модулей
+            var ASSET_VER = '58'; // ← единственное место для бампа версии модулей
             // Порядок важен: scene.js объявляет класс MainScene, затем scene_records.js
             // и scene_ui.js навешивают методы на его прототип, и только потом main.js
             // создаёт игру.
             var MODULES = [
                 'constants', 'i18n', 'utils', 'save', 'entities', 'spawner',
-                'hud', 'shop', 'audio', 'config', 'leaderboard_remote',
+                'hud', 'shop', 'audio', 'config', 'leaderboard_remote', 'cloud_save',
                 'scene', 'scene_records', 'scene_ui', 'main',
             ];
             MODULES.forEach(function (name) {

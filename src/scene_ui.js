@@ -34,7 +34,7 @@ MainScene.prototype.rebuildMenu = function() {
         const st = this.currentState;
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
 
-        const showBg = (st === GameState.MENU || st === GameState.SETTINGS || st === GameState.LOBBY || st === GameState.LEADERBOARD || st === GameState.RENAME_INPUT);
+        const showBg = (st === GameState.MENU || st === GameState.SETTINGS || st === GameState.LOBBY || st === GameState.LEADERBOARD || st === GameState.RENAME_INPUT || st === GameState.CLOUD_RESTORE);
         this.menuBg.setVisible(showBg);
         this.lobbyPlayer.setVisible(st === GameState.LOBBY);
         const hudVisible = (st === GameState.PLAYING || st === GameState.PAUSED || st === GameState.LEVEL_UP || st === GameState.ABILITY_SELECT);
@@ -59,6 +59,7 @@ MainScene.prototype.rebuildMenu = function() {
         else if (st === GameState.ABILITY_SELECT) this._buildAbilitySelect();
         else if (st === GameState.NAME_INPUT) this._buildNameInput();
         else if (st === GameState.RENAME_INPUT) this._buildRenameInput();
+        else if (st === GameState.CLOUD_RESTORE) this._buildCloudRestore();
         else if (st === GameState.PLAYING && this.isGameOver) this._buildGameOver();
     }
 
@@ -105,6 +106,7 @@ MainScene.prototype._buildSettings = function() {
             t('set_effects') + ': < ' + s.effectsVolume + '% >',
             t('set_language') + ': < ' + langLabel + ' >',
             t('set_rename') + ': ' + (s.playerName ? s.playerName : t('not_set')),
+            t('set_cloud'),
             t('back'),
         ];
         for (let i = 0; i < items.length; i++) {
@@ -144,10 +146,95 @@ MainScene.prototype._buildLeaderboard = function() {
         this._mText(W / 2, H * 0.92, t('lb_hint_back'), 36, '#00ffc8', 0.5, 0);
     }
 
+// --- Сбор «билда» забега для паузы/итогов: списки иконок ---
+// Карты прокачки (взятые), с бейджем кол-ва (легендарные — золотая звезда).
+MainScene.prototype._runCards = function() {
+        const out = [];
+        for (let id = 0; id < 7; id++) {
+            if (this.runUpgradeLevels[id] > 0) {
+                const badge = LEGENDARY_UPGRADE_IDS.includes(id) ? '★' : ('x' + this.runUpgradeLevels[id]);
+                out.push({ key: UPGRADE_ICONS[id], badge });
+            }
+        }
+        return out;
+    }
+// Способности в слотах.
+MainScene.prototype._runAbilities = function() {
+        const out = [];
+        for (let i = 0; i < 3; i++) {
+            const id = this.equippedAbilities[i];
+            if (id >= 0) out.push({ key: HUD.abilityIconKey(id), badge: '' });
+        }
+        return out;
+    }
+// Активные артефакты (битовая маска).
+MainScene.prototype._runArtifacts = function() {
+        const out = [];
+        for (let i = 0; i < 7; i++) {
+            if ((this.save.permActiveArtifacts >> i) & 1) out.push({ key: ARTIFACT_ICONS[i], badge: '' });
+        }
+        return out;
+    }
+// Подписанный ряд иконок по центру cx, начиная с y. Возвращает следующий y.
+MainScene.prototype._buildIconRow = function(label, cx, y, entries) {
+        const ICON = 46, GAP = 12;
+        this._mText(cx, y, label, 20, '#8a86a0', 0.5, 0, '#000', 2);
+        const iconY = y + 28;
+        if (!entries.length) {
+            this._mText(cx, iconY + ICON / 2, t('build_none'), 24, '#6a6680', 0.5, 0.5);
+            return iconY + ICON + 16;
+        }
+        const total = entries.length * ICON + (entries.length - 1) * GAP;
+        let sx = cx - total / 2;
+        for (const e of entries) {
+            const tcx = sx + ICON / 2, tcy = iconY + ICON / 2;
+            if (e.key && this.textures.exists(e.key)) {
+                const sp = this._mAdd(this.add.sprite(tcx, tcy, e.key).setOrigin(0.5, 0.5));
+                sp.setScale(ICON / Math.max(sp.width, sp.height));
+            } else {
+                this._mAdd(this.add.rectangle(tcx, tcy, ICON, ICON, 0x241a36, 1).setStrokeStyle(2, 0x5a4a78));
+            }
+            if (e.badge) this._mText(sx + ICON, iconY + ICON, e.badge, 17, '#ffd200', 1, 1, '#321900', 3);
+            sx += ICON + GAP;
+        }
+        return iconY + ICON + 16;
+    }
+
 MainScene.prototype._buildPause = function() {
-        const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
-        this._mAdd(this.add.rectangle(0, 0, W, H, 0x0a001e, 200 / 255).setOrigin(0, 0));
-        this._mText(W / 2, H / 2 - 150, t('pause_title'), 130, '#ffffff', 0.5, 0.5, '#000', 3);
+        const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT, p = this.player;
+        this._mAdd(this.add.rectangle(0, 0, W, H, 0x0a001e, 205 / 255).setOrigin(0, 0));
+        this._mText(W / 2, 70, t('pause_title'), 92, '#ffffff', 0.5, 0.5, '#000', 3);
+
+        // Левая колонка — статы персонажа.
+        const lx = 150, vx = 720;
+        this._mText(lx, 150, t('pause_stats'), 30, '#00ffc8', 0, 0.5, '#000', 2);
+        const fr = p.shootCooldown > 0 ? 1 / p.shootCooldown : 0;
+        const stats = [
+            [t('stat_damage'), '' + p.attackDamage],
+            [t('stat_firerate'), fr.toFixed(1) + '/s'],
+            [t('stat_speed'), '' + Math.round(p.speed)],
+            [t('stat_crit'), Math.round(p.critChance * 100) + '%'],
+            [t('stat_hp'), '' + Math.round(p.maxHp)],
+            [t('stat_armor'), p.armor > 0 ? ('-' + Math.min(90, p.armor * 20) + '%') : '0%'],
+            [t('stat_magnet'), p.pickupRadius >= 99999 ? '∞' : ('' + Math.round(p.pickupRadius))],
+            [t('stat_dash'), p.hasDashUnlocked ? ('Lv ' + p.dashLevel) : t('build_none')],
+        ];
+        let sy = 210;
+        for (const [lab, val] of stats) {
+            this._mText(lx, sy, lab, 28, '#b0a8c0', 0, 0.5);
+            this._mText(vx, sy, val, 28, '#ffffff', 1, 0.5);
+            sy += 44;
+        }
+
+        // Правая колонка — билд (иконки карт/способностей/артефактов).
+        const cx = W * 0.73;
+        this._mText(cx, 150, t('pause_build'), 30, '#00ffc8', 0.5, 0.5, '#000', 2);
+        let by = 200;
+        by = this._buildIconRow(t('build_cards'), cx, by, this._runCards());
+        by = this._buildIconRow(t('build_abilities'), cx, by, this._runAbilities());
+        by = this._buildIconRow(t('build_artifacts'), cx, by, this._runArtifacts());
+
+        // Меню — позиции НЕ менять (на них завязан хит-тест в onPointer*).
         const items = [t('pause_resume'), t('pause_restart'), t('pause_quit')];
         const objs = [];
         for (let i = 0; i < items.length; i++) {
@@ -160,9 +247,33 @@ MainScene.prototype._buildPause = function() {
 
 MainScene.prototype._buildGameOver = function() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
-        this._mAdd(this.add.rectangle(0, 0, W, H, 0x1e000a, 220 / 255).setOrigin(0, 0));
-        this._mText(W / 2, H / 2, t('gameover'), 80, '#ffffff', 0.5, 0.5, '#000', 3);
-        this._mText(W / 2, H / 2 + 220, t('gameover_records'), 32, '#00ffc8', 0.5, 0);
+        this._mAdd(this.add.rectangle(0, 0, W, H, 0x1e000a, 225 / 255).setOrigin(0, 0));
+        this._mText(W / 2, 90, t('gameover_title'), 96, '#ffffff', 0.5, 0.5, '#ff0033', 4);
+
+        // Сводка: время / уровень / убито / монет за забег.
+        const cells = [
+            [t('summary_time'), formatTime(this.survivalTimer)],
+            [t('summary_level'), '' + this.player.level],
+            [t('summary_kills'), '' + (this.killCount || 0)],
+            [t('summary_coins'), '' + (this.coinsThisRun || 0)],
+        ];
+        const colW = 380, startX = W / 2 - (cells.length - 1) * colW / 2;
+        for (let i = 0; i < cells.length; i++) {
+            const x = startX + i * colW;
+            this._mText(x, 210, cells[i][0], 28, '#9a93b4', 0.5, 0.5);
+            this._mText(x, 254, cells[i][1], 52, '#ffd700', 0.5, 0.5, '#3a2a00', 3);
+        }
+
+        // Билд забега.
+        this._mText(W / 2, 340, t('pause_build'), 28, '#00ffc8', 0.5, 0, '#000', 2);
+        let by = 384;
+        by = this._buildIconRow(t('build_cards'), W / 2, by, this._runCards());
+        by = this._buildIconRow(t('build_abilities'), W / 2, by, this._runAbilities());
+        by = this._buildIconRow(t('build_artifacts'), W / 2, by, this._runArtifacts());
+
+        // Управление.
+        this._mText(W / 2, H - 150, t('gameover_hint'), 36, '#dcd7eb', 0.5, 0.5, '#000', 2);
+        this._mText(W / 2, H - 95, t('gameover_records'), 30, '#00ffc8', 0.5, 0.5);
     }
 
 MainScene.prototype._buildNameInput = function() {
@@ -304,7 +415,7 @@ MainScene.prototype.onPointerMove = function(p) {
             if (ns !== -1 && ns !== this.selectedMenuIndex) { this.selectedMenuIndex = ns; this._restyleList(ns); }
         } else if (st === GameState.SETTINGS) {
             let ns = -1;
-            for (let i = 0; i < 8; i++) if (hit(W / 2 - 300, H * 0.25 + i * 84 - 32, 600, 64)) ns = i;
+            for (let i = 0; i < 9; i++) if (hit(W / 2 - 300, H * 0.25 + i * 84 - 32, 600, 64)) ns = i;
             if (ns !== -1 && ns !== this.selectedSettingIndex) { this.selectedSettingIndex = ns; this.rebuildMenu(); }
         } else if (st === GameState.LOBBY) {
             let ns = -1;
@@ -345,7 +456,7 @@ MainScene.prototype.onPointerDown = function(p) {
         } else if (st === GameState.LEADERBOARD) {
             if (hit(W / 2 - 150, H * 0.9 - 30, 300, 60)) this.setState(this.leaderboardFromMenu ? GameState.MENU : GameState.LOBBY);
         } else if (st === GameState.SETTINGS) {
-            for (let i = 0; i < 8; i++) if (hit(W / 2 - 300, H * 0.25 + i * 84 - 32, 600, 64)) { this.selectedSettingIndex = i; this._settingsActivate(); return; }
+            for (let i = 0; i < 9; i++) if (hit(W / 2 - 300, H * 0.25 + i * 84 - 32, 600, 64)) { this.selectedSettingIndex = i; this._settingsActivate(); return; }
         } else if (st === GameState.PAUSED) {
             for (let i = 0; i < 3; i++) if (hit(W / 2 - 250, H / 2 + 50 + i * 100 - 40, 500, 80)) { this.selectedPauseIndex = i; this._pauseActivate(); return; }
         } else if (st === GameState.LOBBY) {
@@ -403,7 +514,8 @@ MainScene.prototype._settingsActivate = function() {
         else if (i === 4) { this._adjustVolume('effects', +1); }
         else if (i === 5) { this._toggleLanguage(); }
         else if (i === 6) { this._openRename(); }
-        else if (i === 7) { this.saveGame(); this.setState(GameState.MENU); }
+        else if (i === 7) { this._openCloudRestore(); }
+        else if (i === 8) { this.saveGame(); this.setState(GameState.MENU); }
     }
 
     // Переключить язык интерфейса en<->ru, применить и сохранить.
@@ -472,6 +584,50 @@ MainScene.prototype._applyLocalRename = function(oldName, newName) {
         }
     }
 
+    // --- Облачное восстановление прогресса по нику ---
+MainScene.prototype._openCloudRestore = function() {
+        if (!CloudSave.configured()) { this.cheatMessage = t('cloud_offline'); this.cheatMessageTimer = 3; this.rebuildMenu(); return; }
+        this.cloudInput = this.save.playerName || '';
+        this._cloudError = ''; this._cloudMsg = ''; this._cloudBusy = false;
+        this.setState(GameState.CLOUD_RESTORE);
+    }
+
+MainScene.prototype._buildCloudRestore = function() {
+        const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
+        this._mAdd(this.add.rectangle(0, 0, W, H, 0x0a001e, 230 / 255).setOrigin(0, 0));
+        this._mText(W / 2, H * 0.18, t('cloud_title'), 84, '#ffd700', 0.5, 0.5, '#b40050', 5);
+        this._mText(W / 2, H * 0.32, t('cloud_enter_nick'), 38, '#dcd7eb', 0.5, 0.5, '#000', 2);
+
+        const boxW = 760, boxH = 96, boxY = H * 0.44;
+        const errored = !!this._cloudError;
+        this._mAdd(this.add.rectangle(W / 2, boxY, boxW, boxH, 0x140028, 1).setOrigin(0.5, 0.5).setStrokeStyle(3, errored ? 0xff3264 : 0x9600ff));
+        this._mText(W / 2, boxY, this.cloudInput + '_', 50, '#ffffff', 0.5, 0.5, '#000', 2);
+
+        if (this._cloudBusy) this._mText(W / 2, H * 0.54, t('cloud_loading'), 34, '#ffd700', 0.5, 0.5, '#000', 2);
+        else if (this._cloudMsg) this._mText(W / 2, H * 0.54, this._cloudMsg, 36, '#32ff96', 0.5, 0.5, '#000', 2);
+        else if (errored) this._mText(W / 2, H * 0.54, this._cloudError, 34, '#ff5078', 0.5, 0.5, '#000', 2);
+
+        this._mText(W / 2, H * 0.66, t('cloud_warn'), 26, '#b08a4a', 0.5, 0.5, '#000', 2);
+        this._mText(W / 2, H * 0.74, t('cloud_hint'), 30, '#7d78a0', 0.5, 0.5, '#000', 2);
+    }
+
+MainScene.prototype._confirmCloudRestore = function() {
+        if (this._cloudBusy) return;
+        if (this._cloudMsg) { this.setState(GameState.SETTINGS); return; } // уже восстановлено — выходим
+        const typed = this.cloudInput.trim();
+        if (!typed) { this._cloudError = t('err_enter_name'); this.rebuildMenu(); return; }
+        if (!CloudSave.configured()) { this._cloudError = t('cloud_offline'); this.rebuildMenu(); return; }
+        this._cloudBusy = true; this._cloudError = ''; this.rebuildMenu();
+        this.restoreFromCloud(typed, (res) => {
+            if (this.currentState !== GameState.CLOUD_RESTORE) return;
+            this._cloudBusy = false;
+            if (res === 'ok') { this._cloudMsg = t('cloud_restored'); this.audio.play('sfx_skillbought'); }
+            else if (res === 'notfound') { this._cloudError = t('cloud_notfound'); }
+            else { this._cloudError = t('cloud_offline'); }
+            this.rebuildMenu();
+        });
+    }
+
     // Изменить громкость на dir*10 (с обёрткой 0..100), применить к аудио и сохранить.
 MainScene.prototype._adjustVolume = function(which, dir) {
         const s = this.save;
@@ -521,8 +677,8 @@ MainScene.prototype.onKeyDown = function(e) {
             if (enter) { this.shop._buyAndNotify(); this.saveGame(); this.shop.redraw(); }
             if (esc) { this.audio.play('sfx_menu_click'); this.saveGame(); this.setState(GameState.LOBBY); }
         } else if (st === GameState.SETTINGS) {
-            if (up) { this.selectedSettingIndex = (this.selectedSettingIndex + 7) % 8; this.rebuildMenu(); }
-            if (down) { this.selectedSettingIndex = (this.selectedSettingIndex + 1) % 8; this.rebuildMenu(); }
+            if (up) { this.selectedSettingIndex = (this.selectedSettingIndex + 8) % 9; this.rebuildMenu(); }
+            if (down) { this.selectedSettingIndex = (this.selectedSettingIndex + 1) % 9; this.rebuildMenu(); }
             if (left && this.selectedSettingIndex === 1) { this.save.currentFpsIndex = (this.save.currentFpsIndex + 4) % 5; this.applyFpsLimit(); this.saveGame(); this.rebuildMenu(); }
             if (right && this.selectedSettingIndex === 1) { this.save.currentFpsIndex = (this.save.currentFpsIndex + 1) % 5; this.applyFpsLimit(); this.saveGame(); this.rebuildMenu(); }
             if (this.selectedSettingIndex === 3) { if (left) this._adjustVolume('sound', -1); if (right) this._adjustVolume('sound', +1); }
@@ -559,6 +715,15 @@ MainScene.prototype.onKeyDown = function(e) {
                 // Любой печатный символ (вкл. кириллицу), кроме управляющих и DEL.
                 const cc = e.key.charCodeAt(0);
                 if (cc >= 32 && cc !== 127 && this.renameInput.length < 20) { this.renameInput += e.key; this._renameError = ''; this.rebuildMenu(); }
+            }
+        } else if (st === GameState.CLOUD_RESTORE) {
+            if (this._cloudBusy) { if (e.preventDefault) e.preventDefault(); return; }
+            if (code === 'Backspace') { this.cloudInput = this.cloudInput.slice(0, -1); this._cloudError = ''; this._cloudMsg = ''; this.rebuildMenu(); if (e.preventDefault) e.preventDefault(); }
+            else if (code === 'Escape') { this.audio.play('sfx_menu_click'); this.setState(GameState.SETTINGS); }
+            else if (code === 'Enter') { this._confirmCloudRestore(); }
+            else if (e.key && e.key.length === 1) {
+                const cc = e.key.charCodeAt(0);
+                if (cc >= 32 && cc !== 127 && this.cloudInput.length < 20) { this.cloudInput += e.key; this._cloudError = ''; this._cloudMsg = ''; this.rebuildMenu(); }
             }
         } else if (st === GameState.PLAYING) {
             if (this.isGameOver) {
