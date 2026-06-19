@@ -34,7 +34,7 @@ MainScene.prototype.rebuildMenu = function() {
         const st = this.currentState;
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
 
-        const showBg = (st === GameState.MENU || st === GameState.SETTINGS || st === GameState.LOBBY || st === GameState.LEADERBOARD || st === GameState.RENAME_INPUT || st === GameState.CLOUD_RESTORE);
+        const showBg = (st === GameState.MENU || st === GameState.SETTINGS || st === GameState.LOBBY || st === GameState.LEADERBOARD || st === GameState.RENAME_INPUT || st === GameState.CLOUD_RESTORE || st === GameState.CHAPTER_SELECT);
         this.menuBg.setVisible(showBg);
         this.lobbyPlayer.setVisible(st === GameState.LOBBY);
         const hudVisible = (st === GameState.PLAYING || st === GameState.PAUSED || st === GameState.LEVEL_UP || st === GameState.ABILITY_SELECT);
@@ -62,6 +62,7 @@ MainScene.prototype.rebuildMenu = function() {
         else if (st === GameState.RENAME_INPUT) this._buildRenameInput();
         else if (st === GameState.CLOUD_RESTORE) this._buildCloudRestore();
         else if (st === GameState.STAGE_CLEAR) this._buildStageClear();
+        else if (st === GameState.CHAPTER_SELECT) this._buildChapterSelect();
         else if (st === GameState.PLAYING && this.isGameOver) this._buildGameOver();
     }
 
@@ -93,6 +94,50 @@ MainScene.prototype._buildLobby = function() {
                 sel ? 75 : 60, sel ? '#ffffff' : '#00ffc8', 0.5, 0.5, sel ? '#ff0096' : '#000', sel ? 3 : 2));
         }
         this._listItems = { objs, labels: items, selSize: 75, baseSize: 60 };
+    }
+
+    // Геометрия карточек выбора главы (общая для рендера и хит-теста мыши).
+MainScene.prototype._chapterCardRect = function(i) {
+        const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
+        const cardW = 420, cardH = 540, gap = 60;
+        const totalW = CHAPTERS.length * cardW + (CHAPTERS.length - 1) * gap;
+        const x0 = (W - totalW) / 2;
+        return { x: x0 + i * (cardW + gap), y: H / 2 - cardH / 2 + 30, w: cardW, h: cardH };
+    }
+
+MainScene.prototype._buildChapterSelect = function() {
+        const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
+        this._mAdd(this.add.rectangle(0, 0, W, H, 0x06001a, 200 / 255).setOrigin(0, 0));
+        this._mText(W / 2, H * 0.12, t('chapter_select_title'), 90, '#00e6ff', 0.5, 0.5, '#c800ff', 4);
+
+        for (let i = 0; i < CHAPTERS.length; i++) {
+            const ch = CHAPTERS[i];
+            const r = this._chapterCardRect(i);
+            const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+            const sel = i === this.selectedChapterIndex;
+            const locked = ch.id > this.save.maxChapterUnlocked;
+            // Тема карточки: цвет главы; заблокированная — серая.
+            const hue = locked ? 0x39394a : ch.hue;
+            const fill = locked ? 0x16161e : Phaser.Display.Color.IntegerToColor(hue).darken(70).color;
+
+            // Подложка-«карта» (вектор) + рамка. Выбранная — ярче и толще.
+            this._mAdd(this.add.rectangle(cx, cy, r.w, r.h, fill, 1).setOrigin(0.5, 0.5)
+                .setStrokeStyle(sel ? 6 : 3, hue, locked ? 0.6 : 1));
+
+            const hexHue = '#' + hue.toString(16).padStart(6, '0');
+            const titleCol = locked ? '#6a6a78' : '#ffffff';
+            // «ГЛАВА» + номер — единый блок по центру карточки.
+            this._mText(cx, cy - 55, t('chapter_label'), 38, locked ? '#56566a' : hexHue, 0.5, 0.5, '#000', 2);
+            this._mText(cx, cy + 20, '' + ch.id, 110, titleCol, 0.5, 0.5, locked ? '#000' : hexHue, 3);
+
+            if (locked) {
+                this._mText(cx, r.y + r.h - 70, '[ ' + t('chapter_locked') + ' ]', 40, '#8a8a98', 0.5, 0.5, '#000', 3);
+            } else {
+                this._mText(cx, r.y + r.h - 70, sel ? '> ' + t('chapter_play') + ' <' : t('chapter_play'),
+                    sel ? 40 : 34, sel ? '#ffffff' : hexHue, 0.5, 0.5, '#c800ff', sel ? 3 : 2);
+            }
+        }
+        this._mText(W / 2, H * 0.92, t('chapter_hint_back'), 30, '#7d78a0', 0.5, 0.5, '#000', 2);
     }
 
 MainScene.prototype._buildSettings = function() {
@@ -518,6 +563,10 @@ MainScene.prototype.onPointerMove = function(p) {
             let ns = -1;
             for (let i = 0; i < 3; i++) if (hit(W * 0.7 - 250, H * 0.45 + i * 110 - 40, 500, 80)) ns = i;
             if (ns !== -1 && ns !== this.selectedLobbyIndex) { this.selectedLobbyIndex = ns; this._restyleList(ns); }
+        } else if (st === GameState.CHAPTER_SELECT) {
+            let ns = -1;
+            for (let i = 0; i < CHAPTERS.length; i++) { const r = this._chapterCardRect(i); if (hit(r.x, r.y, r.w, r.h)) ns = i; }
+            if (ns !== -1 && ns !== this.selectedChapterIndex) { this.selectedChapterIndex = ns; this.rebuildMenu(); }
         } else if (st === GameState.PAUSED) {
             let ns = -1;
             for (let i = 0; i < 3; i++) if (hit(W / 2 - 250, H / 2 + 50 + i * 100 - 40, 500, 80)) ns = i;
@@ -560,6 +609,11 @@ MainScene.prototype.onPointerDown = function(p) {
             for (let i = 0; i < 3; i++) if (hit(W / 2 - 250, H / 2 + 50 + i * 100 - 40, 500, 80)) { this.selectedPauseIndex = i; this._pauseActivate(); return; }
         } else if (st === GameState.LOBBY) {
             for (let i = 0; i < 3; i++) if (hit(W * 0.7 - 250, H * 0.45 + i * 110 - 40, 500, 80)) { this.selectedLobbyIndex = i; this._lobbyActivate(); return; }
+        } else if (st === GameState.CHAPTER_SELECT) {
+            for (let i = 0; i < CHAPTERS.length; i++) {
+                const r = this._chapterCardRect(i);
+                if (hit(r.x, r.y, r.w, r.h)) { this.selectedChapterIndex = i; this._chapterActivate(i); return; }
+            }
         } else if (st === GameState.STAGE_CLEAR) {
             const r = this._stageClearHubRect();
             if (hit(r.x, r.y, r.w, r.h)) this._stageClearToHub();
@@ -608,9 +662,19 @@ MainScene.prototype._menuActivate = function() {
 MainScene.prototype._lobbyActivate = function() {
         this.audio.play('sfx_menu_click');
         const i = this.selectedLobbyIndex;
-        if (i === 0) { this.resetGame(); this.setState(GameState.PLAYING); }
+        if (i === 0) { this.selectedChapterIndex = 0; this.setState(GameState.CHAPTER_SELECT); }
         else if (i === 1) { this.shop.reset(); this.setState(GameState.SHOP); }
         else if (i === 2) { this.saveGame(); this.setState(GameState.MENU); }
+    }
+    // Выбор главы: заблокированная — звук-отказ; доступная — старт забега в этой главе.
+MainScene.prototype._chapterActivate = function(i) {
+        const ch = CHAPTERS[i];
+        if (!ch) return;
+        if (ch.id > this.save.maxChapterUnlocked) { this.audio.play('sfx_menu_click', { volume: 0.4 }); return; }
+        this.audio.play('sfx_menu_click');
+        this.currentChapter = ch.id;
+        this.resetGame();
+        this.setState(GameState.PLAYING);
     }
 MainScene.prototype._settingsActivate = function() {
         this.audio.play('sfx_menu_click');
@@ -777,6 +841,12 @@ MainScene.prototype.onKeyDown = function(e) {
             if (down) { this.selectedLobbyIndex = (this.selectedLobbyIndex + 1) % 3; this._restyleList(this.selectedLobbyIndex); }
             if (enter) this._lobbyActivate();
             if (esc) { this.saveGame(); this.setState(GameState.MENU); }
+        } else if (st === GameState.CHAPTER_SELECT) {
+            const n = CHAPTERS.length;
+            if (left) { this.selectedChapterIndex = (this.selectedChapterIndex + n - 1) % n; this.rebuildMenu(); }
+            if (right) { this.selectedChapterIndex = (this.selectedChapterIndex + 1) % n; this.rebuildMenu(); }
+            if (enter) this._chapterActivate(this.selectedChapterIndex);
+            if (esc) { this.setState(GameState.LOBBY); }
         } else if (st === GameState.SHOP) {
             if (up) { this.shop.navigate(-1, 0); this.shop.redraw(); }
             if (down) { this.shop.navigate(1, 0); this.shop.redraw(); }

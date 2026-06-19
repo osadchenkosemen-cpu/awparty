@@ -368,6 +368,37 @@ class Enemy {
         this.hp = 5; this.maxHp = 5; this.speed = 80; this.damage = 20;
     }
 
+    // Сабвуфер (глава 2+): медленный «танк-колонка». Цикл MOVE → CHARGE (телеграф) →
+    // BOOM: пускает направленную звуковую волну (сектор 90°) в сторону игрока — она
+    // отбрасывает его и наносит урон (создаётся сценой по флагу justSoundWave).
+    makeSubwoofer(texKey) {
+        this.type = EnemyType.SUBWOOFER;
+        if (texKey) { this.sprite.setTexture(texKey); this.sprite.setOrigin(0.5, 0.5); }
+        this._setTargetSize(130);
+        this.hp = 20; this.maxHp = 20; this.speed = 42; this.damage = 25;
+        this.subState = 'MOVE'; this.subTimer = 0;
+        this.justSoundWave = false; this._waveFired = false;
+    }
+
+    // Мошер (глава 2+): обычный чейзер средней живучести, но при смерти распадается
+    // на 2-3 мини-мошеров (см. handleEnemyDeaths). Движение — общий блок погони.
+    makeMosher(texKey) {
+        this.type = EnemyType.MOSHER;
+        if (texKey) { this.sprite.setTexture(texKey); this.sprite.setOrigin(0.5, 0.5); }
+        this._setTargetSize(130);
+        this.hp = 8; this.maxHp = 8; this.speed = 130; this.damage = 20;
+        this.splitOnDeath = true; this.splitCount = 3; // распад на 2-3 мелких
+    }
+    // Мини-мошер: мелкий, быстрый, 1 HP, НЕ делится. texKey — тот же спрайт мошера.
+    makeMosherling(texKey) {
+        this.type = EnemyType.MOSHERLING;
+        if (texKey) { this.sprite.setTexture(texKey); this.sprite.setOrigin(0.5, 0.5); }
+        this._setTargetSize(130);
+        this.sprite.setScale(this.baseScale * 0.65, this.baseScale * 0.65);
+        this.hp = 1; this.maxHp = 1; this.speed = 210; this.damage = 15;
+        this.splitOnDeath = false;
+    }
+
     makeBoss() {
         this.isBoss = true;
         this.type = EnemyType.BOSS;
@@ -530,7 +561,7 @@ class Enemy {
     update(dt, px, py, arenaW, arenaH) {
         const s = this.sprite;
 
-        if (this.type !== EnemyType.BOSS && this.type !== EnemyType.GOBLIN) {
+        if (this.type !== EnemyType.BOSS && this.type !== EnemyType.GOBLIN && this.type !== EnemyType.SUBWOOFER) {
             const dir = normalize(px - s.x, py - s.y);
             s.x += dir.x * this.speed * dt;
             s.y += dir.y * this.speed * dt;
@@ -590,6 +621,37 @@ class Enemy {
                 this.bossTimer += dt;
                 s.setScale(bs, bs);
                 if (this.bossTimer >= recoverDuration) { this.bossState = BossState.WALKING; this.bossTimer = 0; }
+            }
+        } else if (this.type === EnemyType.SUBWOOFER) {
+            this.justSoundWave = false;
+            const base = this.baseScale;
+            if (this.subState === 'MOVE') {
+                // Сближается с игроком; бьёт волной только подойдя на APPROACH_RANGE.
+                const dir = normalize(px - s.x, py - s.y);
+                s.x += dir.x * this.speed * dt;
+                s.y += dir.y * this.speed * dt;
+                this.walkTimer += dt * 6;
+                const bob = Math.sin(this.walkTimer) * 0.05;
+                s.setScale(base * (1 + bob), base * (1 - bob));
+                s.angle = 0;
+                this.subTimer += dt;
+                const dx = px - s.x, dy = py - s.y;
+                const inRange = (dx * dx + dy * dy) <= C.SUBWOOFER.APPROACH_RANGE * C.SUBWOOFER.APPROACH_RANGE;
+                if (this.subTimer >= C.SUBWOOFER.REARM && inRange) { this.subState = 'CHARGE'; this.subTimer = 0; }
+            } else if (this.subState === 'CHARGE') {
+                // Телеграф: набухает и дрожит — игрок видит, что сейчас «бахнет».
+                this.subTimer += dt;
+                const pulse = 1 + 0.25 * clamp(this.subTimer / 0.7, 0, 1) + 0.05 * Math.sin(this.subTimer * 40);
+                s.setScale(base * pulse, base * pulse);
+                s.angle = Math.sin(this.subTimer * 50) * 4;
+                if (this.subTimer >= 0.7) { this.subState = 'BOOM'; this.subTimer = 0; this._waveFired = false; s.angle = 0; }
+            } else if (this.subState === 'BOOM') {
+                // Один импульс: волна летит в сторону игрока; масштаб откатывается к базе.
+                this.subTimer += dt;
+                if (!this._waveFired) { this.justSoundWave = true; this._waveFired = true; }
+                const rec = clamp(this.subTimer / 0.45, 0, 1);
+                s.setScale(base * (1.3 - 0.3 * rec), base * (1.3 - 0.3 * rec));
+                if (this.subTimer >= 0.45) { this.subState = 'MOVE'; this.subTimer = 0; s.setScale(base, base); }
             }
         }
 
@@ -697,6 +759,19 @@ class Enemy {
                 } else {
                     s.clearTint();
                 }
+            } else if (this.type === EnemyType.SUBWOOFER) {
+                if (this.subState === 'CHARGE') {
+                    const pulse = (Math.sin(this.subTimer * 30) + 1) / 2;
+                    s.setTint(rgb(120 + 135 * pulse, 180 + 75 * pulse, 255)); // ярко-циан вспышка зарядки
+                } else if (this.subState === 'BOOM') {
+                    s.setTint(rgb(255, 255, 255)); // белый «удар»
+                } else {
+                    const pulse = (Math.sin(this.walkTimer * 1.2) + 1) / 2;
+                    s.setTint(rgb(40 + 30 * pulse, 40 + 40 * pulse, 200 + 55 * pulse)); // глубокий сине-фиолет
+                }
+            } else if (this.type === EnemyType.MOSHER || this.type === EnemyType.MOSHERLING) {
+                const pulse = (Math.sin(this.walkTimer * 1.5) + 1) / 2;
+                s.setTint(rgb(255, 40 + 80 * pulse, 180 + 60 * pulse)); // неон-маджента «толпа»
             } else {
                 s.clearTint();
             }

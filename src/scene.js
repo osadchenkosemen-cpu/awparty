@@ -65,6 +65,7 @@ class MainScene extends Phaser.Scene {
         this.particles = [];
         this.dmgTexts = [];
         this.bossSouls = [];
+        this.soundWaves = []; // направленные звуковые волны Сабвуфера (отбрасывают игрока)
 
         // Пулы переиспользуемых объектов (снижают нагрузку на GC)
         this.pools = { bullet: [], eproj: [], gem: [], coin: [], vinyl: [], particle: [], dmgText: [] };
@@ -93,6 +94,7 @@ class MainScene extends Phaser.Scene {
         this.gamePhase = GamePhase.PHASE_1;
         this.phaseNotifTimer = 0;
         this.activeStep = 1;
+        this.currentChapter = 1;         // выбранная глава (1..3); забег = 3 этапа главы
         this.phase2Timer = 0;
         this.phase2BossSpawned = false;
         this.phase3Timer = 0;
@@ -134,6 +136,7 @@ class MainScene extends Phaser.Scene {
         this.selectedSettingIndex = 0;
         this.selectedPauseIndex = 0;
         this.selectedLobbyIndex = 0;
+        this.selectedChapterIndex = 0;
         this.selectedLevelUpIndex = -1;
         this.selectedAbilityIndex = -1;
         this.leaderboardFromMenu = false;
@@ -183,6 +186,20 @@ class MainScene extends Phaser.Scene {
     // ===================== ХЕЛПЕРЫ =====================
     addWorld(o) { this.worldLayer.add(o); return o; }
     addUI(o) { this.uiLayer.add(o); return o; }
+    // Текстура с фолбэком: вернёт key, если он загружен, иначе fallback. Используется
+    // для ассетов глав 2/3, файлы которых могут отсутствовать (тогда берётся арт главы 1).
+    _tex(key, fallback) { return this.textures.exists(key) ? key : fallback; }
+    // Множители сложности главы (для главы 1 все = 1, значения не меняются).
+    _applyChapterEnemy(e) {
+        const ch = this.chapter; if (!ch) return;
+        e.hp = Math.round(e.hp * ch.hpMult); e.maxHp = Math.round(e.maxHp * ch.hpMult);
+        e.damage = Math.round(e.damage * ch.dmgMult);
+    }
+    _applyChapterBoss(e) {
+        const ch = this.chapter; if (!ch) return;
+        e.hp = Math.round(e.hp * ch.bossHpMult); e.maxHp = Math.round(e.maxHp * ch.bossHpMult);
+        e.damage = Math.round(e.damage * ch.dmgMult);
+    }
     saveGame() { SaveSystem.save(this.save); this._scheduleCloudBackup(); }
 
     // Авто-бэкап мета-прогресса в облако (если задан ник). Дебаунс: серия сохранений
@@ -314,10 +331,35 @@ class MainScene extends Phaser.Scene {
         this.survivalTimer = 0; this.vinylSpawnTimer = 0; this.phase2BossSpawned = false; this.phase3BossSpawned = false;
         this.gamePhase = GamePhase.PHASE_1; this.phaseNotifTimer = 0; this.activeStep = 1;
         this.phase2Timer = 0; this.phase3Timer = 0; this.phaseTransitionTimer = -1; this.phaseEventFired = false;
+
+        // Контент текущей главы: пол + резолв ключей спрайтов (с фолбэком на главу 1).
+        this.chapter = getChapter(this.currentChapter);
+        this._enemyKey = this._tex(this.chapter.enemyKey, 'enemy');
+        this._goblinKey = this._tex(this.chapter.goblinKey, 'enemyV');
+        this._boss1Key = this._tex(this.chapter.boss1Key, 'enemy');
+        this._boss2Key = this._tex(this.chapter.boss2Key, 'boss2');
+        this._boss3Key = this._tex(this.chapter.boss3Key, 'boss3');
+        // Сабвуфер: ключ только если глава его поддерживает (иначе null — не спавнится).
+        this._subwooferKey = this.chapter.subwooferKey ? this._tex(this.chapter.subwooferKey, this._enemyKey) : null;
+        this._mosherKey = this.chapter.mosherKey ? this._tex(this.chapter.mosherKey, this._enemyKey) : null;
+        // Пол: своя текстура, если есть; иначе 'floor' перекрашиваем тинтом главы.
+        const fk = this._tex(this.chapter.floorKey, 'floor');
+        const usingOwnFloor = (fk === this.chapter.floorKey);
+        this.arena.setTexture(fk);
+        if (!usingOwnFloor && this.chapter.floorTint != null) this.arena.setTint(this.chapter.floorTint);
+        else this.arena.clearTint();
+        // Режим пола: 'stretch' — растягиваем ОДНУ картинку на всю арену (для цельных
+        // сцен — без повтора и швов); иначе бесшовное замощение в натуральном размере.
+        const fsrc = this.textures.get(fk).getSourceImage();
+        if (usingOwnFloor && this.chapter.floorMode === 'stretch' && fsrc && fsrc.width) {
+            this.arena.setTileScale(C.ARENA_WIDTH / fsrc.width, C.ARENA_HEIGHT / fsrc.height);
+        } else {
+            this.arena.setTileScale(1, 1);
+        }
         this.crazyMode = false; this.portal = null; this._stageClearAfterName = false;
         if (this.portalSprite) { this.portalSprite.destroy(); this.portalSprite = null; }
         this.stageStats = []; this._stagePrev = { time: 0, kills: 0, coins: 0, score: 0 };
-        this.slamRingTimer = -1; this.playerBeam = null;
+        this.slamRingTimer = -1; this.playerBeam = null; this.soundWaves.length = 0;
 
         // Очистка сущностей (пулируемые — в пул, остальные — уничтожаем)
         this._clearArr(this.enemies);
@@ -343,9 +385,10 @@ class MainScene extends Phaser.Scene {
             for (let a = 0; a < 20; a++) {
                 const tx = randInt(C.ARENA_WIDTH), ty = randInt(C.ARENA_HEIGHT);
                 if (distSq(cx, cy, tx, ty) >= minD * minD) {
-                    const e = new Enemy(this, tx, ty, 'enemy');
+                    const e = new Enemy(this, tx, ty, this._enemyKey);
                     const r = randInt(100);
                     if (r < 20) e.makeFast(); else if (r < 35) e.makeTank(1); else { e.hp = 2; e.maxHp = 2; }
+                    this._applyChapterEnemy(e);
                     this.enemies.push(e);
                     break;
                 }
@@ -494,8 +537,9 @@ class MainScene extends Phaser.Scene {
             this.phase3Timer += dt;
             if (this.phase3Timer >= 60 && !this.phase3BossSpawned) {
                 const bp = findSpawnPos(px, py, C.ARENA_WIDTH, C.ARENA_HEIGHT, 800);
-                const boss3 = new Enemy(this, bp.x, bp.y, 'boss3');
-                boss3.makeBoss3('boss3');
+                const boss3 = new Enemy(this, bp.x, bp.y, this._boss3Key);
+                boss3.makeBoss3(this._boss3Key);
+                this._applyChapterBoss(boss3);
                 if (s.isHardcoreMode) { boss3.speed *= 1.3; boss3.hp *= 2; boss3.maxHp *= 2; }
                 this.enemies.push(boss3);
                 this.phase3BossSpawned = true;
@@ -508,8 +552,9 @@ class MainScene extends Phaser.Scene {
                 // Не у стены: гарантируем дистанцию от игрока, иначе босс появлялся внутри него.
                 const bp = findSpawnPos(px, py, C.ARENA_WIDTH, C.ARENA_HEIGHT, 800);
                 const bx = bp.x, by = bp.y;
-                const boss2 = new Enemy(this, bx, by, 'boss2');
-                boss2.makeBoss2('boss2');
+                const boss2 = new Enemy(this, bx, by, this._boss2Key);
+                boss2.makeBoss2(this._boss2Key);
+                this._applyChapterBoss(boss2);
                 if (s.isHardcoreMode) { boss2.speed *= 1.5; boss2.hp *= 2; boss2.maxHp *= 2; }
                 this.enemies.push(boss2);
                 this.phase2BossSpawned = true;
@@ -540,7 +585,7 @@ class MainScene extends Phaser.Scene {
             const p3 = this.gamePhase === GamePhase.PHASE_3;
             const spawnTime = p3 ? this.phase3Timer : (p2 ? this.phase2Timer : this.survivalTimer);
             this.spawner.update(this, dt, spawnTime, C.ARENA_WIDTH, C.ARENA_HEIGHT, px, py, this.enemies,
-                s.isHardcoreMode, 'enemy', 'enemyV', p2, this.phase2Timer, p3, this.activeStep);
+                s.isHardcoreMode, this._enemyKey, this._goblinKey, p2, this.phase2Timer, p3, this.activeStep);
         }
 
         // Стрельба (только когда игрок стоит)
@@ -591,9 +636,21 @@ class MainScene extends Phaser.Scene {
                 pr.damage = e.damage; // снаряд наследует урон стрелка (10/20/30 по этапу)
                 this.enemyProjectiles.push(pr);
             }
+            if (e.justSoundWave) {
+                // Сабвуфер: направленная звуковая волна (сектор 90°) от врага к игроку.
+                const SW = C.SUBWOOFER;
+                this.soundWaves.push({
+                    x: e.sprite.x, y: e.sprite.y,
+                    angle: Math.atan2(py - e.sprite.y, px - e.sprite.x),
+                    radius: 0, maxRadius: SW.WAVE_RADIUS, halfArc: SW.WAVE_HALF_ARC,
+                    timer: 0, hit: false, damage: e.damage,
+                });
+                this.audio.play('sfx_boss_warning', { volume: 0.35, minGap: 80 });
+            }
             if (e.justFiredVolley) {
+                const off = e.volleyAngleOffset || 0; // смещение углов кольца (Сабвуфер чередует кольца)
                 for (let v = 0; v < 12; v++) {
-                    const ang = v * (2 * Math.PI / 12);
+                    const ang = v * (2 * Math.PI / 12) + off;
                     const dir = { x: Math.cos(ang), y: Math.sin(ang) };
                     const pr = this.spawnEnemyProjectile(e.sprite.x, e.sprite.y, e.sprite.x + dir.x * 500, e.sprite.y + dir.y * 500);
                     pr.damage = e.damage; // волна босса: урон = урон босса
@@ -740,6 +797,33 @@ class MainScene extends Phaser.Scene {
         if (this.slamRingTimer >= 0) { this.slamRingTimer += dt; if (this.slamRingTimer >= C.SLAM_RING_DURATION) this.slamRingTimer = -1; }
         if (this.playerBeam) { this.playerBeam.timer -= dt; if (this.playerBeam.timer <= 0) this.playerBeam = null; }
 
+        // Звуковые волны Сабвуфера: раскрываются; при достижении игрока (внутри сектора)
+        // один раз отбрасывают его от центра и наносят урон.
+        if (this.soundWaves.length) {
+            const SW = C.SUBWOOFER;
+            for (const w of this.soundWaves) {
+                w.timer += dt;
+                w.radius = w.maxRadius * clamp(w.timer / SW.WAVE_EXPAND, 0, 1);
+                if (w.hit) continue;
+                const dx = p.sprite.x - w.x, dy = p.sprite.y - w.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 1 && dist <= w.radius) {
+                    let da = Math.atan2(dy, dx) - w.angle;
+                    da = Math.atan2(Math.sin(da), Math.cos(da)); // нормализация в [-π, π]
+                    if (Math.abs(da) <= w.halfArc) {
+                        w.hit = true;
+                        p.sprite.x = clamp(p.sprite.x + (dx / dist) * SW.WAVE_KNOCKBACK, 0, C.ARENA_WIDTH);
+                        p.sprite.y = clamp(p.sprite.y + (dy / dist) * SW.WAVE_KNOCKBACK, 0, C.ARENA_HEIGHT);
+                        const oldHp = p.hp;
+                        p.takeDamage(w.damage);
+                        if (p.hp < oldHp) { this.triggerShake(0.3, 60); this.audio.play('sfx_player_hurt'); }
+                        if (p.hp <= 0 && !this.isGameOver) this.onPlayerDeath();
+                    }
+                }
+            }
+            this.soundWaves = this.soundWaves.filter(w => w.timer < SW.WAVE_EXPAND + 0.15);
+        }
+
         // Души боссов
         for (const soul of this.bossSouls) {
             if (soul.isCollected) continue;
@@ -857,9 +941,23 @@ class MainScene extends Phaser.Scene {
 
     handleEnemyDeaths(px, py) {
         const s = this.save, p = this.player;
+        const split = []; // мини-мошеры, заспавненные при смерти Мошеров (пушим после цикла)
         for (const e of this.enemies) {
             if (e.hp > 0) continue;
             this.killCount++;
+            // Мошер: распад на 2-3 мини. Делаем до дропа; мини НЕ делятся (splitOnDeath=false).
+            if (e.splitOnDeath && this._mosherKey) {
+                const n = 2 + randInt(2); // 2 или 3
+                for (let i = 0; i < n; i++) {
+                    const ang = Math.random() * Math.PI * 2;
+                    const mx = clamp(e.sprite.x + Math.cos(ang) * 40, 0, C.ARENA_WIDTH);
+                    const my = clamp(e.sprite.y + Math.sin(ang) * 40, 0, C.ARENA_HEIGHT);
+                    const m = new Enemy(this, mx, my, this._mosherKey);
+                    m.makeMosherling(this._mosherKey);
+                    this._applyChapterEnemy(m);
+                    split.push(m);
+                }
+            }
             // Очки за убийство (боссы дают больше). В безумном этапе очки не начисляются.
             if (!this.crazyMode) this.runScore += this._scoreFor(e);
             if ((s.permActiveArtifacts >> 3) & 1) {
@@ -879,9 +977,10 @@ class MainScene extends Phaser.Scene {
                 if (randInt(100) < 35) this.vinyls.push(this.spawnVinyl(ex, ey));
                 continue;
             }
-            const particleCount = (e.isBoss2 || e.isBoss3) ? 300 : (e.isBoss ? 200 : 15);
-            const c1 = e.isBoss3 ? rgb(0, 230, 255) : e.isBoss2 ? rgb(200, 0, 255) : rgb(255, 20, 50);
-            const c2 = e.isBoss3 ? rgb(150, 255, 255) : e.isBoss2 ? rgb(255, 100, 0) : rgb(255, 0, 150);
+            const isSub = e.type === EnemyType.SUBWOOFER;
+            const particleCount = (e.isBoss2 || e.isBoss3) ? 300 : (e.isBoss ? 200 : (isSub ? 40 : 15));
+            const c1 = isSub ? rgb(60, 90, 255) : e.isBoss3 ? rgb(0, 230, 255) : e.isBoss2 ? rgb(200, 0, 255) : rgb(255, 20, 50);
+            const c2 = isSub ? rgb(0, 220, 255) : e.isBoss3 ? rgb(150, 255, 255) : e.isBoss2 ? rgb(255, 100, 0) : rgb(255, 0, 150);
             for (let i = 0; i < particleCount; i++) this.particles.push(this.spawnParticle(ex, ey, randInt(2) === 0 ? c1 : c2));
 
             if (e.isBoss3) {
@@ -921,6 +1020,7 @@ class MainScene extends Phaser.Scene {
                 if (randInt(100) < 2) this.vinyls.push(this.spawnVinyl(ex, ey));
             }
         }
+        for (const m of split) this.enemies.push(m);
     }
 
     // ===================== БЕЗУМНЫЙ ЭТАП / ПОРТАЛ =====================
@@ -931,6 +1031,9 @@ class MainScene extends Phaser.Scene {
         if (e.isBoss2) return S.BOSS2;
         if (e.isBoss) return S.BOSS1;
         if (e.type === EnemyType.GOBLIN) return S.GOBLIN;
+        if (e.type === EnemyType.SUBWOOFER) return S.SUBWOOFER;
+        if (e.type === EnemyType.MOSHER) return S.MOSHER;
+        if (e.type === EnemyType.MOSHERLING) return S.MOSHERLING;
         if (e.type === EnemyType.FAST) return S.FAST;
         if (e.type === EnemyType.TANK) return S.TANK;
         return S.NORMAL;
@@ -968,6 +1071,9 @@ class MainScene extends Phaser.Scene {
     // Игрок вошёл в портал — фиксируем результат и показываем итоги 3 этапов.
     _enterPortal() {
         this.audio.play('sfx_menu_click');
+        // Глава пройдена — открываем следующую (если есть) и сохраняем прогресс.
+        const next = this.currentChapter + 1;
+        if (next <= CHAPTERS.length && this.save.maxChapterUnlocked < next) this.save.maxChapterUnlocked = next;
         this.saveGame();
         // Результат проходит в таблицу: если ник уже есть — тихо отправляем и показываем итоги.
         // Если ника ещё нет (первый забег) — просим ввести, а итоги покажем после ввода.
@@ -1149,6 +1255,18 @@ class MainScene extends Phaser.Scene {
             g.strokeCircle(this.slamRingCenter.x, this.slamRingCenter.y, r + 6);
             g.lineStyle(3, rgb(255, 220, 80), alpha);
             g.strokeCircle(this.slamRingCenter.x, this.slamRingCenter.y, r);
+        }
+        // Звуковые волны Сабвуфера: сектор 90° + дуга-фронт (циан).
+        for (const w of this.soundWaves) {
+            const ta = clamp(w.timer / (C.SUBWOOFER.WAVE_EXPAND + 0.15), 0, 1);
+            const alpha = 1 - ta;
+            const a0 = w.angle - w.halfArc, a1 = w.angle + w.halfArc;
+            g.fillStyle(rgb(0, 200, 255), 0.12 * alpha);
+            g.slice(w.x, w.y, w.radius, a0, a1, false); g.fillPath();
+            g.lineStyle(10, rgb(0, 220, 255), 0.5 * alpha);
+            g.beginPath(); g.arc(w.x, w.y, w.radius, a0, a1, false); g.strokePath();
+            g.lineStyle(4, rgb(180, 245, 255), 0.85 * alpha);
+            g.beginPath(); g.arc(w.x, w.y, Math.max(0, w.radius - 8), a0, a1, false); g.strokePath();
         }
         // Лазер игрока (способность LASER): затухающий пробивающий луч
         if (this.playerBeam) {

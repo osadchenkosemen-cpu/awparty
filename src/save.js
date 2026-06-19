@@ -31,6 +31,7 @@ const SaveSystem = {
             permMultishot: 0,
             permArtifacts: 0,      // битовая маска купленных (7 бит)
             permActiveArtifacts: 0, // битовая маска активных (макс 3)
+            maxChapterUnlocked: 1,  // макс. открытая глава (1..3); растёт после прохождения
         };
     },
 
@@ -65,6 +66,7 @@ const SaveSystem = {
         if (b.permMagnet < 0 || b.permMagnet > 3) b.permMagnet = 0;
         if (b.permMultishot < 0 || b.permMultishot > 1) b.permMultishot = 0;
         if (b.permArtifacts < 0 || b.permArtifacts > 127) b.permArtifacts = 0;
+        if (!(b.maxChapterUnlocked >= 1 && b.maxChapterUnlocked <= 3)) b.maxChapterUnlocked = 1;
 
         b.permActiveArtifacts &= b.permArtifacts; // active — подмножество owned
         // Не больше 3 активных
@@ -99,6 +101,7 @@ const SaveSystem = {
             permMultishot: data.permMultishot,
             permArtifacts: data.permArtifacts,
             permActiveArtifacts: data.permActiveArtifacts,
+            maxChapterUnlocked: data.maxChapterUnlocked,
         };
         try { localStorage.setItem(SAVE_KEY, JSON.stringify(blob)); } catch (e) {}
     },
@@ -120,6 +123,7 @@ const SaveSystem = {
         data.permMultishot = 0;
         data.permArtifacts = 0;
         data.permActiveArtifacts = 0;
+        data.maxChapterUnlocked = 1;
         return data;
     },
 
@@ -128,7 +132,7 @@ const SaveSystem = {
     META_FIELDS: [
         'totalCoins', 'permMaxHp', 'permDamage', 'permSpeed', 'permDashLevel',
         'permCritChance', 'permRegen', 'permArmor', 'permMagnet', 'permMultishot',
-        'permArtifacts', 'permActiveArtifacts',
+        'permArtifacts', 'permActiveArtifacts', 'maxChapterUnlocked',
     ],
 
     // Снимок мета-прогресса для отправки в облако.

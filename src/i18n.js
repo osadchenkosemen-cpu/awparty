@@ -18,6 +18,13 @@ const I18N = {
         lobby_shop: 'UPGRADES & SHOP',
         lobby_back: 'Back to Menu',
 
+        // --- Выбор главы ---
+        chapter_select_title: 'SELECT CHAPTER',
+        chapter_label: 'CHAPTER',
+        chapter_play: 'PLAY',
+        chapter_locked: 'SOON',
+        chapter_hint_back: 'Esc — back to hub',
+
         // --- Настройки ---
         set_hardcore: 'Hardcore Mode',
         set_fps: 'FPS Limit',
@@ -216,6 +223,13 @@ const I18N = {
         lobby_start: 'НАЧАТЬ ЗАБЕГ',
         lobby_shop: 'УЛУЧШЕНИЯ И МАГАЗИН',
         lobby_back: 'Назад в меню',
+
+        // --- Выбор главы ---
+        chapter_select_title: 'ВЫБОР ГЛАВЫ',
+        chapter_label: 'ГЛАВА',
+        chapter_play: 'ИГРАТЬ',
+        chapter_locked: 'СКОРО',
+        chapter_hint_back: 'Esc — назад в хаб',
 
         // --- Настройки ---
         set_hardcore: 'Хардкор',
