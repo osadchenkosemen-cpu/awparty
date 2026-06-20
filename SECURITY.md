@@ -22,21 +22,21 @@
   `SECURITY DEFINER`-функции `submit_score` / `rename_player`.
 
 ### 2. Валидация в `submit_score`
-> Рейтинг ранжируется по **`score`** (при равенстве — по `time`), поэтому ключевой
-> потолок — именно по `score`. RPC обязан, как минимум:
-- **Ограничить `score` сверху** разумным потолком — отсекает явную накрутку (главная дыра:
-  с публичным `anon`-ключом любой может вызвать RPC с произвольным `p_score`).
-- **Ограничить `time` сверху** (например, несколькими часами) и проверить, что
-  `score`/`time` — конечные неотрицательные числа (не `NaN`/`Infinity`).
+> Рейтинг ранжируется по **`time`** (меньше = быстрее прошёл главу = выше; при равенстве —
+> больше `score`). Клиент отправляет результат только при ПРОХОЖДЕНИИ главы (вход в портал),
+> не при смерти. RPC обязан, как минимум:
+- **Ограничить `score` и `time` сверху** разумными потолками и проверить, что они —
+  конечные неотрицательные числа (не `NaN`/`Infinity`). С публичным `anon`-ключом любой
+  может вызвать RPC напрямую с произвольными значениями.
 - **Санитизировать имя**: обрезать длину, убрать управляющие символы и переводы строк.
 - **Хранить одну запись на игрока в режиме** (`name + mode`), оставляя лучший результат
-  (очки, при равенстве — время).
+  (меньшее время, при равенстве — больше очков).
 - **Ограничить частоту вызовов** (rate limit) — чтобы нельзя было залить таблицу.
 
 ### 3. Валидация в `rename_player`
 - Те же проверки имени, что и выше.
-- Слияние записей по лучшему времени при коллизии нового имени (уже учтено клиентом
-  как fallback, но решающее слово — за сервером).
+- Слияние записей по лучшему результату (меньшее время, при равенстве — больше очков)
+  при коллизии нового имени (уже учтено клиентом как fallback, но решающее слово — за сервером).
 
 ## Готовая миграция (выполнить в Supabase → SQL Editor)
 
@@ -52,8 +52,8 @@
 -- ============================================================================
 -- AwParty — защита общей таблицы рекордов. Выполнить целиком.
 -- Схема (сверено аудитом): leaderboard(id, name text, mode text, score integer,
--- time double precision, created_at timestamptz). Метрика рейтинга — score
--- (при равенстве — time).
+-- time double precision, created_at timestamptz). Метрика рейтинга — time
+-- (меньше = быстрее = выше; при равенстве — больше score).
 -- ============================================================================
 
 -- 0. Уникальность «одна запись на игрока в режиме» (нужно для on conflict).
@@ -68,7 +68,7 @@ create policy "anon read leaderboard"
   on public.leaderboard for select to anon using (true);
 -- (намеренно НЕТ insert/update/delete-политик для anon)
 
--- 2. submit_score: валидирует вход, хранит ЛУЧШИЙ РЕЗУЛЬТАТ по очкам на (name, mode).
+-- 2. submit_score: валидирует вход, хранит ЛУЧШИЙ РЕЗУЛЬТАТ по времени на (name, mode).
 create or replace function public.submit_score(
   p_name text, p_score integer, p_time double precision, p_mode text)
 returns void language plpgsql security definer set search_path = public as $$
@@ -92,14 +92,16 @@ begin
   insert into public.leaderboard (name, score, time, mode, created_at)
   values (v_name, p_score, p_time, v_mode, now())
   on conflict (name, mode) do update
-    set score = greatest(leaderboard.score, excluded.score),
-        time  = case when excluded.score > leaderboard.score
-                     then excluded.time else leaderboard.time end,
-        created_at = case when excluded.score > leaderboard.score
+    set time  = least(leaderboard.time, excluded.time),
+        score = case
+                  when excluded.time < leaderboard.time then excluded.score
+                  when excluded.time = leaderboard.time then greatest(leaderboard.score, excluded.score)
+                  else leaderboard.score end,
+        created_at = case when excluded.time < leaderboard.time
                           then now() else leaderboard.created_at end;
 end; $$;
 
--- 3. rename_player: проверка имени + слияние по лучшим ОЧКАМ в каждом режиме.
+-- 3. rename_player: проверка имени + слияние по лучшему ВРЕМЕНИ в каждом режиме.
 create or replace function public.rename_player(p_old text, p_new text)
 returns void language plpgsql security definer set search_path = public as $$
 declare v_new text;
@@ -109,14 +111,16 @@ begin
   if p_old is null or btrim(p_old) = '' then raise exception 'invalid old name'; end if;
   if v_new = p_old then return; end if;
 
-  -- перенести строки старого имени под новое, слив лучший результат по очкам
+  -- перенести строки старого имени под новое, слив лучший результат по времени
   insert into public.leaderboard (name, score, time, mode, created_at)
     select v_new, o.score, o.time, o.mode, o.created_at from leaderboard o where o.name = p_old
   on conflict (name, mode) do update
-    set score = greatest(leaderboard.score, excluded.score),
-        time  = case when excluded.score > leaderboard.score
-                     then excluded.time else leaderboard.time end,
-        created_at = case when excluded.score > leaderboard.score
+    set time  = least(leaderboard.time, excluded.time),
+        score = case
+                  when excluded.time < leaderboard.time then excluded.score
+                  when excluded.time = leaderboard.time then greatest(leaderboard.score, excluded.score)
+                  else leaderboard.score end,
+        created_at = case when excluded.time < leaderboard.time
                           then excluded.created_at else leaderboard.created_at end;
   delete from leaderboard where name = p_old;
 end; $$;

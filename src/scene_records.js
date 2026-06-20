@@ -10,20 +10,10 @@ MainScene.prototype.onPlayerDeath = function() {
         this.isGameOver = true;
         this.audio.play('sfx_player_death', { volume: 0.9 });
         this.saveGame();
-        if (this.qualifiesForLeaderboard(this.runScore, this.survivalTimer, this._runMode())) {
-            if (this.save.playerName) {
-                // Ник уже задан — молча отправляем лучший результат, показываем Game Over.
-                this._submitScore(this.save.playerName, false);
-                this.rebuildMenu();
-            } else {
-                // Первый раз — просим ввести ник.
-                this.nameInput = '';
-                this._nameError = '';
-                this.setState(GameState.NAME_INPUT);
-            }
-        } else {
-            this.rebuildMenu();
-        }
+        // В топ идут ТОЛЬКО прохождения главы (вход в портал, см. _enterPortal), а не смерти:
+        // метрика рейтинга — время прохождения, и быстрая смерть не должна попасть наверх.
+        // Поэтому здесь результат НЕ отправляем — просто показываем экран Game Over.
+        this.rebuildMenu();
     }
 
     // Записать результат в таблицу режима забега. showBoard=true — открыть её с подсветкой.

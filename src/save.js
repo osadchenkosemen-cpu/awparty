@@ -3,10 +3,11 @@
 // Поля и значения по умолчанию совпадают с C++.
 
 const SAVE_KEY = 'awparty_save';
-// v2 — рекорды теперь по очкам (score), а не по времени. Новый ключ, чтобы старые
-// time-записи не подмешивались к новым score-записям.
-const LB_KEY = 'awparty_leaderboard_v2';        // обычный режим
-const LB_KEY_HC = 'awparty_leaderboard_hc_v2';  // hardcore
+// v3 — рекорды ранжируются по ВРЕМЕНИ прохождения (быстрее = выше), при равенстве — очки.
+// Новый ключ, чтобы старые score-ранжированные записи не смешивались с новой метрикой
+// (локальный кэш сбрасывается; общий онлайн-топ подтянется заново при открытии экрана).
+const LB_KEY = 'awparty_leaderboard_v3';        // обычный режим
+const LB_KEY_HC = 'awparty_leaderboard_hc_v3';  // hardcore
 
 const SaveSystem = {
     // Значения по умолчанию из Game::loadGameData
@@ -14,7 +15,7 @@ const SaveSystem = {
         return {
             totalCoins: 0,
             isHardcoreMode: false,
-            isFullscreen: true,
+            isFullscreen: false,  // по умолчанию — в окне (WINDOWED)
             soundVolume: 40,    // громкость музыки, 0..100
             effectsVolume: 60,  // громкость SFX, 0..100
             playerName: '',     // последний введённый ник (подставляется на экране рекорда)

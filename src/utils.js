@@ -46,10 +46,15 @@ function fmtNum(n) {
     return String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
-// Сравнение записей рекордов: приоритет у очков (score), при равенстве — у времени (time).
-// Для сортировки по убыванию (лучшие сверху): list.sort(lbCompare).
+// Сравнение записей рекордов: приоритет у ВРЕМЕНИ (меньше = быстрее прошёл = выше),
+// при равном времени — у очков (больше = выше). Пустые записи (нет ни времени, ни очков)
+// всегда в конце. Для сортировки «лучшие сверху»: list.sort(lbCompare).
 function lbCompare(a, b) {
-    return (b.score || 0) - (a.score || 0) || (b.time || 0) - (a.time || 0);
+    const aEmpty = !((a.time || 0) > 0 || (a.score || 0) > 0);
+    const bEmpty = !((b.time || 0) > 0 || (b.score || 0) > 0);
+    if (aEmpty !== bEmpty) return aEmpty ? 1 : -1; // непустые — выше пустых
+    if (aEmpty && bEmpty) return 0;
+    return (a.time || 0) - (b.time || 0) || (b.score || 0) - (a.score || 0);
 }
 
 // Пустая запись таблицы рекордов.
