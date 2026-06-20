@@ -3,6 +3,18 @@
 // Сюда входят: построение всех экранов (меню/лобби/настройки/рекорды/пауза/левелап/способности),
 // обработка мыши и клавиатуры, переходы по пунктам, смена языка/громкости, переименование игрока.
 
+// Экран настроек: пункты сгруппированы по категориям. Внутри rows — ЛОГИЧЕСКИЕ индексы
+// (та же нумерация, что в _settingsActivate/обработчиках ввода): 0 хардкор, 1 окно,
+// 2 звук, 3 эффекты, 4 язык, 5 имя, 6 облако, 7 назад. SETTINGS_ORDER — порядок обхода
+// стрелками (визуальный сверху вниз). Пункт 7 (Назад) — кнопка под панелью.
+const SETTINGS_GROUPS = [
+    { title: 'set_grp_game',    rows: [0] },
+    { title: 'set_grp_audio',   rows: [2, 3] },
+    { title: 'set_grp_display', rows: [1, 4] },
+    { title: 'set_grp_account', rows: [5, 6] },
+];
+const SETTINGS_ORDER = [0, 2, 3, 1, 4, 5, 6, 7];
+
     // ===================== МЕНЮ / UI =====================
 MainScene.prototype._clearMenu = function() { this.menuObjs.forEach(o => o.destroy()); this.menuObjs = []; }
 MainScene.prototype._mAdd = function(o) { this.addUI(o); this.menuObjs.push(o); return o; }
@@ -142,25 +154,74 @@ MainScene.prototype._buildChapterSelect = function() {
 
 MainScene.prototype._buildSettings = function() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT, s = this.save;
-        this._mText(W / 2, H * 0.11, 'AwParty', 110, '#00ffc8', 0.5, 0.5, '#ffffff', 2);
-        const fps = C.FPS_LIMITS[s.currentFpsIndex];
+        this._mText(W / 2, H * 0.07, t('set_title'), 78, '#00ffc8', 0.5, 0.5, '#ff0096', 3);
+
         const langLabel = s.language === 'ru' ? t('lang_ru') : t('lang_en');
-        const items = [
-            t('set_hardcore') + ': ' + (s.isHardcoreMode ? t('on') : t('off')),
-            t('set_fps') + ': < ' + (fps === 0 ? t('fps_uncapped') : fps) + ' >',
-            t('set_window') + ': < ' + (s.isFullscreen ? t('win_full') : t('win_windowed')) + ' >',
-            t('set_sound') + ': < ' + s.soundVolume + '% >',
-            t('set_effects') + ': < ' + s.effectsVolume + '% >',
-            t('set_language') + ': < ' + langLabel + ' >',
-            t('set_rename') + ': ' + (s.playerName ? s.playerName : t('not_set')),
-            t('set_cloud'),
-            t('back'),
-        ];
-        for (let i = 0; i < items.length; i++) {
-            const sel = i === this.selectedSettingIndex;
-            this._mText(W / 2, H * 0.25 + i * 84, sel ? '> ' + items[i] + ' <' : items[i],
-                sel ? 46 : 38, sel ? '#ffffff' : '#00ffc8', 0.5, 0.5, sel ? '#ff0096' : '#000', sel ? 3 : 2);
+        const labelOf = (i) => [t('set_hardcore'), t('set_window'), t('set_sound'),
+            t('set_effects'), t('set_language'), t('set_rename'), t('set_cloud')][i];
+        const valueOf = (i) => {
+            if (i === 0) return s.isHardcoreMode ? t('on') : t('off');
+            if (i === 1) return s.isFullscreen ? t('win_full') : t('win_windowed');
+            if (i === 2) return s.soundVolume + '%';
+            if (i === 3) return s.effectsVolume + '%';
+            if (i === 4) return langLabel;
+            if (i === 5) return s.playerName ? s.playerName : t('not_set');
+            if (i === 6) return t('set_cloud_open');
+            return '';
+        };
+        // Пункты со стрелками < > (меняются влево/вправо): окно, звук, эффекты, язык.
+        const isAdjustable = (i) => i >= 1 && i <= 4;
+
+        // Геометрия панели и строк.
+        const panelW = 780, panelX = W / 2 - panelW / 2, padX = 46;
+        const rowH = 56, headH = 50, grpGap = 12, innerPad = 22;
+        let total = innerPad * 2 - grpGap;
+        for (const g of SETTINGS_GROUPS) total += headH + g.rows.length * rowH + grpGap;
+        const panelTop = H * 0.135;
+        // Панель (рисуем первой — она под текстом).
+        this._mAdd(this.add.rectangle(panelX, panelTop, panelW, total, 0x0c0820, 0.82)
+            .setOrigin(0, 0).setStrokeStyle(2, 0x6a4aa0));
+
+        this._settingsRows = [];
+        let y = panelTop + innerPad;
+        for (const grp of SETTINGS_GROUPS) {
+            this._mText(panelX + padX, y + headH / 2, t(grp.title), 24, '#ff64c8', 0, 0.5, '#000', 2);
+            this._mAdd(this.add.rectangle(panelX + padX, y + headH - 6, panelW - padX * 2, 2, 0x3a3060, 1).setOrigin(0, 0.5));
+            y += headH;
+            for (const idx of grp.rows) {
+                const sel = idx === this.selectedSettingIndex;
+                const rx = panelX + 18, rw = panelW - 36, cy = y + rowH / 2;
+                if (sel) this._mAdd(this.add.rectangle(rx, y + 4, rw, rowH - 8, 0x2a1840, 1)
+                    .setOrigin(0, 0).setStrokeStyle(2, 0xff3296));
+                this._mText(panelX + padX, cy, labelOf(idx), sel ? 32 : 28,
+                    sel ? '#ffffff' : '#cfe9e0', 0, 0.5, '#000', 2);
+                const row = { idx, x: rx, y, w: rw, h: rowH };
+                if (isAdjustable(idx)) {
+                    // Стрелки < > — отдельные кликабельные элементы (правый край строки).
+                    const aSize = sel ? 34 : 30, aCol = '#7ad6ff', vCol = sel ? '#ffe45a' : '#ffffff';
+                    const gR = this._mText(panelX + panelW - padX, cy, '>', aSize, aCol, 1, 0.5, '#000', 2);
+                    const vMid = this._mText(gR.x - gR.width - 18, cy, valueOf(idx), sel ? 32 : 28, vCol, 1, 0.5, '#000', 2);
+                    const gL = this._mText(vMid.x - vMid.width - 18, cy, '<', aSize, aCol, 1, 0.5, '#000', 2);
+                    row.adjL = { x: gL.x - gL.width - 14, y, w: gL.width + 28, h: rowH };
+                    row.adjR = { x: gR.x - gR.width - 14, y, w: gR.width + 28, h: rowH };
+                } else {
+                    this._mText(panelX + panelW - padX, cy, valueOf(idx), sel ? 32 : 28,
+                        sel ? '#ffe45a' : '#00ffc8', 1, 0.5, '#000', 2);
+                }
+                this._settingsRows.push(row);
+                y += rowH;
+            }
+            y += grpGap;
         }
+
+        // Кнопка «Назад» (логический индекс 7) — под панелью.
+        const bw = 300, bh = 58, bx = W / 2 - bw / 2, by = panelTop + total + 26;
+        const bsel = this.selectedSettingIndex === 7;
+        this._mAdd(this.add.rectangle(bx, by, bw, bh, bsel ? 0x2a1840 : 0x140a28, 1)
+            .setOrigin(0, 0).setStrokeStyle(2, bsel ? 0xff3296 : 0x6a4aa0));
+        this._mText(bx + bw / 2, by + bh / 2, t('back'), bsel ? 34 : 30, bsel ? '#ffffff' : '#00ffc8', 0.5, 0.5, '#000', 2);
+        this._settingsRows.push({ idx: 7, x: bx, y: by, w: bw, h: bh });
+
         if (this.cheatMessageTimer > 0) this._mText(50, H - 110, this.cheatMessage, 28, '#ffff00', 0, 0);
 
         // Кнопка «Сбросить персонажа» — правый нижний угол (мышь). Имя/настройки сохраняются.
@@ -551,7 +612,7 @@ MainScene.prototype.onPointerMove = function(p) {
             if (ns !== -1 && ns !== this.selectedMenuIndex) { this.selectedMenuIndex = ns; this._restyleList(ns); }
         } else if (st === GameState.SETTINGS) {
             let ns = -1;
-            for (let i = 0; i < 9; i++) if (hit(W / 2 - 300, H * 0.25 + i * 84 - 32, 600, 64)) ns = i;
+            if (this._settingsRows) for (const r of this._settingsRows) if (hit(r.x, r.y, r.w, r.h)) ns = r.idx;
             // Ховер кнопки сброса (правый нижний угол).
             const rr = this._settingsResetRect();
             const rh = (x >= rr.x && x <= rr.x + rr.w && y >= rr.y && y <= rr.y + rr.h);
@@ -604,7 +665,11 @@ MainScene.prototype.onPointerDown = function(p) {
         } else if (st === GameState.SETTINGS) {
             const rr = this._settingsResetRect();
             if (x >= rr.x && x <= rr.x + rr.w && y >= rr.y && y <= rr.y + rr.h) { this._settingsResetClick(); return; }
-            for (let i = 0; i < 9; i++) if (hit(W / 2 - 300, H * 0.25 + i * 84 - 32, 600, 64)) { this.selectedSettingIndex = i; this._settingsActivate(); return; }
+            if (this._settingsRows) for (const r of this._settingsRows) {
+                if (r.adjL && hit(r.adjL.x, r.adjL.y, r.adjL.w, r.adjL.h)) { this.selectedSettingIndex = r.idx; this._settingsAdjust(r.idx, -1); return; }
+                if (r.adjR && hit(r.adjR.x, r.adjR.y, r.adjR.w, r.adjR.h)) { this.selectedSettingIndex = r.idx; this._settingsAdjust(r.idx, +1); return; }
+                if (hit(r.x, r.y, r.w, r.h)) { this.selectedSettingIndex = r.idx; this._settingsActivate(); return; }
+            }
         } else if (st === GameState.PAUSED) {
             for (let i = 0; i < 3; i++) if (hit(W / 2 - 250, H / 2 + 50 + i * 100 - 40, 500, 80)) { this.selectedPauseIndex = i; this._pauseActivate(); return; }
         } else if (st === GameState.LOBBY) {
@@ -680,14 +745,23 @@ MainScene.prototype._settingsActivate = function() {
         this.audio.play('sfx_menu_click');
         const i = this.selectedSettingIndex, s = this.save;
         if (i === 0) { s.isHardcoreMode = !s.isHardcoreMode; this.saveGame(); this.rebuildMenu(); }
-        else if (i === 1) { s.currentFpsIndex = (s.currentFpsIndex + 1) % 5; this.applyFpsLimit(); this.saveGame(); this.rebuildMenu(); }
-        else if (i === 2) { s.isFullscreen = !s.isFullscreen; if (s.isFullscreen) { if (!this.scale.isFullscreen) this.scale.startFullscreen(); } else if (this.scale.isFullscreen) this.scale.stopFullscreen(); this.saveGame(); this.rebuildMenu(); }
-        else if (i === 3) { this._adjustVolume('sound', +1); }
-        else if (i === 4) { this._adjustVolume('effects', +1); }
-        else if (i === 5) { this._toggleLanguage(); }
-        else if (i === 6) { this._openRename(); }
-        else if (i === 7) { this._openCloudRestore(); }
-        else if (i === 8) { this.saveGame(); this.setState(GameState.MENU); }
+        else if (i === 1) { s.isFullscreen = !s.isFullscreen; if (s.isFullscreen) { if (!this.scale.isFullscreen) this.scale.startFullscreen(); } else if (this.scale.isFullscreen) this.scale.stopFullscreen(); this.saveGame(); this.rebuildMenu(); }
+        else if (i === 2) { this._adjustVolume('sound', +1); }
+        else if (i === 3) { this._adjustVolume('effects', +1); }
+        else if (i === 4) { this._toggleLanguage(); }
+        else if (i === 5) { this._openRename(); }
+        else if (i === 6) { this._openCloudRestore(); }
+        else if (i === 7) { this.saveGame(); this.setState(GameState.MENU); }
+    }
+
+    // Изменить параметр стрелками < / > (dir: -1 влево, +1 вправо). Для бинарных
+    // (окно/язык) направление неважно — переключение.
+MainScene.prototype._settingsAdjust = function(idx, dir) {
+        const s = this.save;
+        if (idx === 1) { this.audio.play('sfx_menu_click'); s.isFullscreen = !s.isFullscreen; if (s.isFullscreen) { if (!this.scale.isFullscreen) this.scale.startFullscreen(); } else if (this.scale.isFullscreen) this.scale.stopFullscreen(); this.saveGame(); this.rebuildMenu(); }
+        else if (idx === 2) { this._adjustVolume('sound', dir); }
+        else if (idx === 3) { this._adjustVolume('effects', dir); }
+        else if (idx === 4) { this._toggleLanguage(); }
     }
 
     // Переключить язык интерфейса en<->ru, применить и сохранить.
@@ -855,13 +929,15 @@ MainScene.prototype.onKeyDown = function(e) {
             if (enter) { this.shop._buyAndNotify(); this.saveGame(); this.shop.redraw(); }
             if (esc) { this.audio.play('sfx_menu_click'); this.saveGame(); this.setState(GameState.LOBBY); }
         } else if (st === GameState.SETTINGS) {
-            if (up) { this.selectedSettingIndex = (this.selectedSettingIndex + 8) % 9; this.rebuildMenu(); }
-            if (down) { this.selectedSettingIndex = (this.selectedSettingIndex + 1) % 9; this.rebuildMenu(); }
-            if (left && this.selectedSettingIndex === 1) { this.save.currentFpsIndex = (this.save.currentFpsIndex + 4) % 5; this.applyFpsLimit(); this.saveGame(); this.rebuildMenu(); }
-            if (right && this.selectedSettingIndex === 1) { this.save.currentFpsIndex = (this.save.currentFpsIndex + 1) % 5; this.applyFpsLimit(); this.saveGame(); this.rebuildMenu(); }
-            if (this.selectedSettingIndex === 3) { if (left) this._adjustVolume('sound', -1); if (right) this._adjustVolume('sound', +1); }
-            if (this.selectedSettingIndex === 4) { if (left) this._adjustVolume('effects', -1); if (right) this._adjustVolume('effects', +1); }
-            if ((left || right) && this.selectedSettingIndex === 5) { this._toggleLanguage(); }
+            if (up || down) {
+                let pos = SETTINGS_ORDER.indexOf(this.selectedSettingIndex); if (pos < 0) pos = 0;
+                pos = (pos + (down ? 1 : SETTINGS_ORDER.length - 1)) % SETTINGS_ORDER.length;
+                this.selectedSettingIndex = SETTINGS_ORDER[pos]; this.rebuildMenu();
+            }
+            // ←/→ меняют параметры со стрелками (окно/звук/эффекты/язык) — как клик по < >.
+            if ((left || right) && this.selectedSettingIndex >= 1 && this.selectedSettingIndex <= 4) {
+                this._settingsAdjust(this.selectedSettingIndex, left ? -1 : +1);
+            }
             if (enter) this._settingsActivate();
             if (esc) { this.saveGame(); this.setState(GameState.MENU); }
             // Чит-код 'givecoinz'

@@ -1,18 +1,11 @@
 // Точка входа: конфигурация Phaser и запуск сцены.
 
-// Лимит FPS из сейва, чтобы он действовал с самого первого кадра.
-// FPS_LIMITS: [30,60,120,240,0]; 0 = без лимита (совпадает с Phaser fps.limit).
-const savedFpsLimit = (() => {
-    try { return C.FPS_LIMITS[SaveSystem.load().currentFpsIndex] || 0; }
-    catch (e) { return 0; }
-})();
-
 const config = {
     type: Phaser.AUTO,
     parent: 'game',
     backgroundColor: '#0a0a0a',
-    // limit>0 — Phaser ограничивает частоту кадров (stepLimitFPS); 0 — без лимита.
-    fps: { limit: savedFpsLimit },
+    // limit 0 — без искусственного лимита: requestAnimationFrame идёт на частоте монитора.
+    fps: { limit: 0 },
     scale: {
         // NONE + CSS-растяжение канваса на весь вьюпорт: внутреннее разрешение
         // остаётся 1920x1080 (UI не плывёт), но чёрных полос нет.

@@ -24,7 +24,6 @@ class MainScene extends Phaser.Scene {
         // Сейв
         this.save = SaveSystem.load();
         setLanguage(this.save.language); // применить выбранный язык интерфейса
-        this.applyFpsLimit();            // применить сохранённый лимит FPS к игровому циклу
 
         // Отключаем контекстное меню браузера на canvas (ПКМ используется в игре)
         if (this.input && this.input.mouse) this.input.mouse.disableContextMenu();
@@ -478,21 +477,6 @@ class MainScene extends Phaser.Scene {
         }
         // При открытии таблицы — тянем свежий общий топ показываемого режима.
         if (ns === GameState.LEADERBOARD) this._refreshRemoteLeaderboard(this.lbView);
-    }
-
-    // Применить лимит FPS из сейва к работающему игровому циклу (Phaser 4 TimeStep).
-    // limit>0 ограничивает частоту кадров, 0 — без лимита. Меняем три поля цикла и
-    // переподключаем кадровый коллбэк raf к нужной step-функции (step / stepLimitFPS),
-    // т.к. start() выбирает её один раз и повторно не переключает.
-    applyFpsLimit() {
-        const limit = C.FPS_LIMITS[this.save.currentFpsIndex] || 0;
-        const loop = this.sys.game.loop;
-        if (!loop || !loop.raf) return;
-        loop.fpsLimit = limit;
-        loop.hasFpsLimit = limit > 0;
-        loop._limitRate = limit > 0 ? 1000 / limit : 0;
-        loop.resetDelta(); // сброс накопленной дельты, чтобы не тащить мусор при смене режима
-        loop.raf.callback = (loop.hasFpsLimit ? loop.stepLimitFPS : loop.step).bind(loop);
     }
 
     // Кастомный курсор канваса (порт setMouseCursor: прицел в игре, стрелка в меню)

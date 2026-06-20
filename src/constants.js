@@ -76,9 +76,6 @@ const C = {
     MAX_PERM_SPEED_LEVEL: 5,
     MAX_PERM_DASH_LEVEL: 5,
 
-    // --- FPS limit options (Game.cpp constructor) ---
-    FPS_LIMITS: [30, 60, 120, 240, 0],
-
     // Множитель монет в hardcore-режиме (награда за повышенную сложность).
     HARDCORE_COIN_MULT: 1.5,
 

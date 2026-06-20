@@ -14,7 +14,6 @@ const SaveSystem = {
         return {
             totalCoins: 0,
             isHardcoreMode: false,
-            currentFpsIndex: 1,
             isFullscreen: true,
             soundVolume: 40,    // громкость музыки, 0..100
             effectsVolume: 60,  // громкость SFX, 0..100
@@ -48,7 +47,6 @@ const SaveSystem = {
     // Валидация/клэмпы полей сейва (как в Game::loadGameData). Мутирует и возвращает b.
     // Вынесено отдельно, чтобы переиспользовать при применении облачного бэкапа.
     _validate(b) {
-        if (b.currentFpsIndex < 0 || b.currentFpsIndex > 4) b.currentFpsIndex = 1;
         if (!(b.soundVolume >= 0 && b.soundVolume <= 100)) b.soundVolume = 40;
         if (!(b.effectsVolume >= 0 && b.effectsVolume <= 100)) b.effectsVolume = 60;
         if (typeof b.playerName !== 'string') b.playerName = '';
@@ -84,7 +82,6 @@ const SaveSystem = {
         const blob = {
             totalCoins: data.totalCoins,
             isHardcoreMode: data.isHardcoreMode,
-            currentFpsIndex: data.currentFpsIndex,
             isFullscreen: data.isFullscreen,
             soundVolume: data.soundVolume,
             effectsVolume: data.effectsVolume,
