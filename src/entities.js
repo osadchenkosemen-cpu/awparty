@@ -288,10 +288,10 @@ class Enemy {
     constructor(scene, x, y, texKey) {
         this.scene = scene;
         this._id = Enemy._nextId++; // стабильный порядок для сепарации (замена &enemy > other)
-        this.speed = 100;
-        this.hp = 2;
-        this.maxHp = 2;
-        this.damage = 20; // урон по игроку в новой шкале (HP=100): десятки, не единицы (x2)
+        this.speed = C.ENEMY.NORMAL.speed;
+        this.hp = C.ENEMY.NORMAL.hp;
+        this.maxHp = this.hp;
+        this.damage = C.ENEMY.NORMAL.damage; // урон по игроку в новой шкале (HP=100): десятки, не единицы (x2)
         this.walkTimer = randInt(100) / 10;
 
         this.type = EnemyType.NORMAL;
@@ -332,7 +332,7 @@ class Enemy {
 
         this.sprite = scene.addWorld(scene.add.sprite(x, y, texKey));
         this.sprite.setOrigin(0.5, 0.5);
-        this._setTargetSize(90);
+        this._setTargetSize(C.ENEMY.BASE_SIZE);
         this.maxHp = this.hp;
     }
 
@@ -342,39 +342,43 @@ class Enemy {
     }
 
     makeTank(playerLevel) {
+        const st = C.ENEMY.TANK;
         this.type = EnemyType.TANK;
-        this.speed = 55;
-        this.hp = 10 + playerLevel * 2;
+        this.speed = st.speed;
+        this.hp = st.hpBase + playerLevel * st.hpPerLevel;
         this.maxHp = this.hp;
-        this.damage = 20;
-        this.sprite.setScale(this.baseScale * 1.5, this.baseScale * 1.5);
+        this.damage = st.damage;
+        this.sprite.setScale(this.baseScale * st.scale, this.baseScale * st.scale);
     }
 
     makeFast() {
+        const st = C.ENEMY.FAST;
         this.type = EnemyType.FAST;
-        this.speed = 216;
-        this.hp = 1;
-        this.maxHp = 1;
-        this.damage = 20;
-        this.sprite.setScale(this.baseScale * 0.7, this.baseScale * 0.7);
+        this.speed = st.speed;
+        this.hp = st.hp;
+        this.maxHp = st.hp;
+        this.damage = st.damage;
+        this.sprite.setScale(this.baseScale * st.scale, this.baseScale * st.scale);
     }
 
     makeGoblin(goblinTexKey) {
+        const st = C.ENEMY.GOBLIN;
         this.type = EnemyType.GOBLIN;
         this.sprite.setTexture(goblinTexKey);
         this.sprite.setOrigin(0.5, 0.5);
-        this._setTargetSize(105);
-        this.hp = 5; this.maxHp = 5; this.speed = 80; this.damage = 20;
+        this._setTargetSize(st.size);
+        this.hp = st.hp; this.maxHp = st.hp; this.speed = st.speed; this.damage = st.damage;
     }
 
     // Сабвуфер (глава 2+): медленный «танк-колонка». Цикл MOVE → CHARGE (телеграф) →
     // BOOM: пускает направленную звуковую волну (сектор 90°) в сторону игрока — она
     // отбрасывает его и наносит урон (создаётся сценой по флагу justSoundWave).
     makeSubwoofer(texKey) {
+        const st = C.ENEMY.SUBWOOFER;
         this.type = EnemyType.SUBWOOFER;
         if (texKey) { this.sprite.setTexture(texKey); this.sprite.setOrigin(0.5, 0.5); }
-        this._setTargetSize(130);
-        this.hp = 20; this.maxHp = 20; this.speed = 42; this.damage = 25;
+        this._setTargetSize(st.size);
+        this.hp = st.hp; this.maxHp = st.hp; this.speed = st.speed; this.damage = st.damage;
         this.subState = 'MOVE'; this.subTimer = 0;
         this.justSoundWave = false; this._waveFired = false;
     }
@@ -382,60 +386,66 @@ class Enemy {
     // Мошер (глава 2+): обычный чейзер средней живучести, но при смерти распадается
     // на 2-3 мини-мошеров (см. handleEnemyDeaths). Движение — общий блок погони.
     makeMosher(texKey) {
+        const st = C.ENEMY.MOSHER;
         this.type = EnemyType.MOSHER;
         if (texKey) { this.sprite.setTexture(texKey); this.sprite.setOrigin(0.5, 0.5); }
-        this._setTargetSize(130);
-        this.hp = 8; this.maxHp = 8; this.speed = 130; this.damage = 20;
-        this.splitOnDeath = true; this.splitCount = 3; // распад на 2-3 мелких
+        this._setTargetSize(st.size);
+        this.hp = st.hp; this.maxHp = st.hp; this.speed = st.speed; this.damage = st.damage;
+        this.splitOnDeath = true; // распад на splitMin..splitMax мини (число — в handleEnemyDeaths)
     }
     // Мини-мошер: мелкий, быстрый, 1 HP, НЕ делится. texKey — тот же спрайт мошера.
     makeMosherling(texKey) {
+        const st = C.ENEMY.MOSHERLING;
         this.type = EnemyType.MOSHERLING;
         if (texKey) { this.sprite.setTexture(texKey); this.sprite.setOrigin(0.5, 0.5); }
-        this._setTargetSize(130);
-        this.sprite.setScale(this.baseScale * 0.65, this.baseScale * 0.65);
-        this.hp = 1; this.maxHp = 1; this.speed = 210; this.damage = 15;
+        this._setTargetSize(st.size);
+        this.sprite.setScale(this.baseScale * st.scale, this.baseScale * st.scale);
+        this.hp = st.hp; this.maxHp = st.hp; this.speed = st.speed; this.damage = st.damage;
         this.splitOnDeath = false;
     }
 
     // Хайпмен (глава 2+): убегает от игрока, сам почти не бьёт. Ауру (+HP/реген союзникам)
     // считает сцена (_updateHypeAuras). Движение — собственная ветка «бегство».
     makeHypeman(texKey) {
+        const st = C.ENEMY.HYPEMAN;
         this.type = EnemyType.HYPEMAN;
         if (texKey) { this.sprite.setTexture(texKey); this.sprite.setOrigin(0.5, 0.5); }
-        this._setTargetSize(130);
-        this.hp = 12; this.maxHp = 12; this.speed = 120; this.damage = 10;
+        this._setTargetSize(st.size);
+        this.hp = st.hp; this.maxHp = st.hp; this.speed = st.speed; this.damage = st.damage;
     }
 
     makeBoss() {
+        const st = C.BOSS.B1;
         this.isBoss = true;
         this.type = EnemyType.BOSS;
-        this.hp = 50; this.maxHp = 50; this.speed = 130; this.damage = 50;
-        this.bossScale = this.baseScale * 3; // базовый масштаб (для анимации ходьбы/сброса)
+        this.hp = st.hp; this.maxHp = st.hp; this.speed = st.speed; this.damage = st.damage;
+        this.bossScale = this.baseScale * st.scale; // базовый масштаб (для анимации ходьбы/сброса)
         this.sprite.setScale(this.bossScale, this.bossScale);
     }
 
     makeBoss2(boss2TexKey) {
+        const st = C.BOSS.B2;
         this.isBoss = true; this.isBoss2 = true;
         this.type = EnemyType.BOSS;
         this.sprite.setTexture(boss2TexKey);
         this.sprite.setOrigin(0.5, 0.5);
-        this.baseScale = 90 / this.sprite.width;
-        this.hp = 100; this.maxHp = 100; this.speed = 150; this.damage = 60;
-        this.bossScale = this.baseScale * 3.5;
+        this.baseScale = C.ENEMY.BASE_SIZE / this.sprite.width;
+        this.hp = st.hp; this.maxHp = st.hp; this.speed = st.speed; this.damage = st.damage;
+        this.bossScale = this.baseScale * st.scale;
         this.sprite.setScale(this.bossScale, this.bossScale);
     }
 
     // STROBE — босс 3 этапа (лазерный VJ). Текстура-плейсхолдер (boss2), тонируется
     // в неон сценой; можно заменить на отдельный спрайт позже.
     makeBoss3(texKey) {
+        const st = C.BOSS.B3;
         this.isBoss = true; this.isBoss3 = true;
         this.type = EnemyType.BOSS;
         this.sprite.setTexture(texKey);
         this.sprite.setOrigin(0.5, 0.5);
-        this.baseScale = 90 / this.sprite.width;
-        this.hp = 180; this.maxHp = 180; this.speed = 140; this.damage = 40;
-        this.bossScale = this.baseScale * 3.2;
+        this.baseScale = C.ENEMY.BASE_SIZE / this.sprite.width;
+        this.hp = st.hp; this.maxHp = st.hp; this.speed = st.speed; this.damage = st.damage;
+        this.bossScale = this.baseScale * st.scale;
         this.sprite.setScale(this.bossScale, this.bossScale);
         this.strobeState = 'ROAM';
         this.strobeTimer = 0;
@@ -517,7 +527,7 @@ class Enemy {
                     this.strobeTimer = 0;
                 }
             } else if (this.strobeAttack === 2) {
-                const normal = this.baseScale * 3.2;
+                const normal = this.bossScale; // = baseScale * C.BOSS.B3.scale (масштаб «обычной» формы)
                 const shrinkDur = 0.4 * tf;
                 const expandDur = 0.35 * tf;
                 if (!this._teleported) {
@@ -819,6 +829,13 @@ class Bullet {
         this.scene = scene;
         this.speed = 800;
         this.TRAIL_LENGTH = 8;
+        // Трейл — кольцевой буфер фиксированной ёмкости (две типизированные дорожки),
+        // выделяется ОДИН раз: точки не аллоцируются каждый кадр (как раньше {x,y} + shift).
+        // trailStart — индекс самой старой точки, trailCount — число валидных точек (0..cap).
+        this.trailX = new Float64Array(this.TRAIL_LENGTH);
+        this.trailY = new Float64Array(this.TRAIL_LENGTH);
+        this.trailStart = 0;
+        this.trailCount = 0;
         this.sprite = scene.addWorld(scene.add.sprite(x, y, 'bullet'));
         this.sprite.setOrigin(0.5, 0.5);
         this.reinit(x, y, dirx, diry, damage, crit);
@@ -831,7 +848,7 @@ class Bullet {
         this.ricochetsLeft = 0;
         this.pierceLeft = 0;   // прострел: сколько врагов ещё пробьёт
         this.lastHit = null;   // последний пробитый враг (чтобы не бить его дважды)
-        this.history = [{ x, y }];
+        this.trailX[0] = x; this.trailY[0] = y; this.trailStart = 0; this.trailCount = 1;
         this.vx = dirx * this.speed;
         this.vy = diry * this.speed;
         this.sprite.setPosition(x, y).setVisible(true);
@@ -842,8 +859,16 @@ class Bullet {
     }
 
     update(dt) {
-        this.history.push({ x: this.sprite.x, y: this.sprite.y });
-        if (this.history.length > this.TRAIL_LENGTH) this.history.shift();
+        // Записываем позицию ДО сдвига (как и раньше) в кольцевой буфер — без аллокаций.
+        const cap = this.TRAIL_LENGTH;
+        if (this.trailCount < cap) {
+            const i = (this.trailStart + this.trailCount) % cap;
+            this.trailX[i] = this.sprite.x; this.trailY[i] = this.sprite.y;
+            this.trailCount++;
+        } else {
+            this.trailX[this.trailStart] = this.sprite.x; this.trailY[this.trailStart] = this.sprite.y;
+            this.trailStart = (this.trailStart + 1) % cap; // перезаписали старейшую — сдвигаем начало
+        }
         this.sprite.x += this.vx * dt;
         this.sprite.y += this.vy * dt;
     }

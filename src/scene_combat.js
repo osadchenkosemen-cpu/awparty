@@ -120,7 +120,8 @@ MainScene.prototype.handleEnemyDeaths = function(px, py) {
             this.killCount++;
             // Мошер: распад на 2-3 мини. Делаем до дропа; мини НЕ делятся (splitOnDeath=false).
             if (e.splitOnDeath && this._mosherKey) {
-                const n = 2 + randInt(2); // 2 или 3
+                const SP = C.ENEMY.MOSHER;
+                const n = SP.splitMin + randInt(SP.splitMax - SP.splitMin + 1); // splitMin..splitMax
                 for (let i = 0; i < n; i++) {
                     const ang = Math.random() * Math.PI * 2;
                     const mx = clamp(e.sprite.x + Math.cos(ang) * 40, 0, C.ARENA_WIDTH);
@@ -157,6 +158,7 @@ MainScene.prototype.handleEnemyDeaths = function(px, py) {
             for (let i = 0; i < particleCount; i++) this.particles.push(this.spawnParticle(ex, ey, randInt(2) === 0 ? c1 : c2));
 
             if (e.isBoss3) {
+                this._boss3Alive = false; // гейт спавна снова открыт (см. _updateSpawning)
                 this.triggerShake(0.8, 70);
                 this.audio.play('sfx_boss_death', { volume: 1 });
                 this.bossSouls.push(new BossSoul(this, ex, ey, 3));

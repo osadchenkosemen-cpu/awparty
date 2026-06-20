@@ -389,6 +389,7 @@ class MainScene extends Phaser.Scene {
         p.bladeMail = false; p.pierce = false; // карточки: блейдмейл (шипы) / прострел (пробитие)
 
         this.survivalTimer = 0; this.vinylSpawnTimer = 0; this.phase2BossSpawned = false; this.phase3BossSpawned = false;
+        this._boss3Alive = false; // живой ли босс-3 сейчас (гейт спавна; замена enemies.some каждый кадр)
         this.gamePhase = GamePhase.PHASE_1; this.phaseNotifTimer = 0; this.activeStep = 1;
         this.phase2Timer = 0; this.phase3Timer = 0; this.phaseTransitionTimer = -1; this.phaseEventFired = false;
         this._encPhase = 0; this._encTimer = 0; this._encAt = 0; this._encDone = false; // событие «окружение» (раз за этап)

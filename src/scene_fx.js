@@ -66,18 +66,19 @@ MainScene.prototype.drawWorldFx = function() {
         const g = this.worldFx;
         g.clear();
         this._drawSoundWaveWalls(g); // стены-границы в виде звуковых волн
-        // Трейлы пуль (PlayState.cpp: круги радиусом 8*ratio, alpha 180*ratio)
+        // Трейлы пуль (PlayState.cpp: круги радиусом 8*ratio, alpha 180*ratio).
+        // Читаем кольцевой буфер: логический индекс i (0 = старейшая точка) → физический
+        // (start + i) % cap. Старые точки — тусклее/мельче, свежие — ярче/крупнее.
         for (const b of this.bullets) {
-            const h = b.history;
-            const n = h.length;
+            const n = b.trailCount;
             if (n <= 0) continue;
+            const tx = b.trailX, ty = b.trailY, cap = b.TRAIL_LENGTH, start = b.trailStart;
+            const col = b.isCrit ? rgb(255, 200, 0) : rgb(0, 255, 255);
             for (let i = 0; i < n; i++) {
                 const ratio = i / n;
-                const radius = 8 * ratio;
-                const alpha = (180 * ratio) / 255;
-                const col = b.isCrit ? rgb(255, 200, 0) : rgb(0, 255, 255);
-                g.fillStyle(col, alpha);
-                g.fillCircle(h[i].x, h[i].y, radius);
+                const p = (start + i) % cap;
+                g.fillStyle(col, (180 * ratio) / 255);
+                g.fillCircle(tx[p], ty[p], 8 * ratio);
             }
         }
         // Кольцо Ground Slam

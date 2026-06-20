@@ -33,6 +33,7 @@ MainScene.prototype._updatePhaseProgression = function(dt, px, py) {
                 if (s.isHardcoreMode) { boss3.speed *= 1.3; boss3.hp *= 2; boss3.maxHp *= 2; }
                 this.enemies.push(boss3);
                 this.phase3BossSpawned = true;
+                this._boss3Alive = true; // снимается в handleEnemyDeaths при смерти босса-3
             }
         }
 
@@ -57,7 +58,7 @@ MainScene.prototype._updateSpawning = function(dt, px, py) {
         const s = this.save;
         const spawningActive = (this.gamePhase !== GamePhase.CLEARING)
             && !(this.gamePhase === GamePhase.PHASE_2 && this.phase2BossSpawned)
-            && !(this.gamePhase === GamePhase.PHASE_3 && this.enemies.some(e => e.isBoss3))
+            && !(this.gamePhase === GamePhase.PHASE_3 && this._boss3Alive)
             && (this.phaseTransitionTimer < 0);
         if (spawningActive) {
             const p2 = this.gamePhase === GamePhase.PHASE_2;

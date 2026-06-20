@@ -70,6 +70,31 @@ const C = {
         FLEE_DIST: 450,              // ближе этой дистанции Хайпмен убегает от игрока
     },
 
+    // --- Базовые статы врагов: hp / speed / damage / размеры — в ОДНОМ месте ---
+    // Перенесено 1:1 из make*-методов entities.js, чтобы баланс правился здесь. Множители
+    // сложности главы накладываются поверх (scene._applyChapterEnemy/_applyChapterBoss).
+    // ВНИМАНИЕ: C.HYPEMAN / C.SUBWOOFER выше — это ПОВЕДЕНИЕ (аура, волна), а hp/speed/damage
+    // тех же врагов — здесь, в C.ENEMY. Размеры: BASE_SIZE — обычный враг; size — иной спрайт;
+    // scale — множитель к baseScale (полученному из размера спрайта).
+    ENEMY: {
+        BASE_SIZE: 90,
+        NORMAL:     { hp: 2,  speed: 100, damage: 20 },
+        FAST:       { hp: 1,  speed: 216, damage: 20, scale: 0.7 },
+        TANK:       { hpBase: 10, hpPerLevel: 2, speed: 55, damage: 20, scale: 1.5 },
+        GOBLIN:     { hp: 5,  speed: 80,  damage: 20, size: 105 },
+        SUBWOOFER:  { hp: 20, speed: 42,  damage: 25, size: 130 },
+        MOSHER:     { hp: 8,  speed: 130, damage: 20, size: 130, splitMin: 2, splitMax: 3 },
+        MOSHERLING: { hp: 1,  speed: 210, damage: 15, size: 130, scale: 0.65 },
+        HYPEMAN:    { hp: 12, speed: 120, damage: 10, size: 130 },
+    },
+
+    // Боссы трёх этапов (B1/B2/B3). scale — множитель к baseScale → bossScale.
+    BOSS: {
+        B1: { hp: 50,  speed: 130, damage: 50, scale: 3.0 },
+        B2: { hp: 100, speed: 150, damage: 60, scale: 3.5 },
+        B3: { hp: 180, speed: 140, damage: 40, scale: 3.2 },
+    },
+
     // --- Meta-progression caps (Game.h) ---
     MAX_PERM_MAXHP: 10,
     MAX_PERM_DAMAGE: 10,
