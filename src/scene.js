@@ -1027,6 +1027,8 @@ class MainScene extends Phaser.Scene {
         p.messageTimer = 2.0;
         if (id >= 0 && id < 7) this.runUpgradeLevels[id]++;
         this.selectedLevelUpIndex = -1;
+        // Задержка перед стрельбой: клик по карте не должен сразу приводить к выстрелу.
+        p.currentCooldown = Math.max(p.currentCooldown, 0.2);
         this.setState(GameState.PLAYING);
     }
 

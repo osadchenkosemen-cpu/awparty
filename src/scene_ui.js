@@ -714,6 +714,8 @@ MainScene.prototype._chooseAbility = function(id) {
             }
         }
         this.pendingAbilityCount = 0;
+        // Задержка перед стрельбой: клик по карте не должен сразу приводить к выстрелу.
+        this.player.currentCooldown = Math.max(this.player.currentCooldown, 0.2);
         this.setState(GameState.PLAYING);
     }
 
