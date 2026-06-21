@@ -256,12 +256,12 @@ MainScene.prototype._buildLeaderboard = function() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x000000, 160 / 255).setOrigin(0, 0));
         this._mText(W / 2, 50, t('lb_title'), 100, '#ffd700', 0.5, 0, '#b40050', 5);
-        // Глава (←/→) + режим (↑/↓).
-        this._mText(W / 2, 160, '◀  ' + t('lb_chapter') + ' ' + this.lbChapter + '  ▶', 46, '#ffd700', 0.5, 0.5, '#000', 3);
+        // Глава (←/→) + режим (↑/↓) — ниже заголовка, чтобы не налезало на «РЕКОРДЫ».
+        this._mText(W / 2, 200, '◀  ' + t('lb_chapter') + ' ' + this.lbChapter + '  ▶', 46, '#ffd700', 0.5, 0.5, '#000', 3);
         const hc = this.lbView === 'hardcore';
-        this._mText(W / 2, 225, (hc ? t('lb_hardcore') : t('lb_normal')), 40, hc ? '#ff5050' : '#00ffc8', 0.5, 0.5, '#000', 3);
+        this._mText(W / 2, 258, (hc ? t('lb_hardcore') : t('lb_normal')), 40, hc ? '#ff5050' : '#00ffc8', 0.5, 0.5, '#000', 3);
         const board = this.leaderboards[this.lbView][this.lbChapter] || [];
-        const rowY0 = 300, rowH = 54;
+        const rowY0 = 330, rowH = 54;
         const colX = [W * 0.08, W * 0.16, W * 0.50, W * 0.66, W * 0.80];
         const hdrs = [t('lb_col_num'), t('lb_col_name'), t('lb_col_score'), t('lb_col_time'), t('lb_col_date')];
         for (let i = 0; i < 5; i++) this._mText(colX[i], rowY0 - 38, hdrs[i], 26, '#00ffc8', 0, 0);
