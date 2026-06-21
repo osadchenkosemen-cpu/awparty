@@ -72,6 +72,21 @@ const C = {
         FLEE_DIST: 300,              // ближе этой дистанции Хайпмен убегает от игрока
     },
 
+    // Босс-доктор (этап 1, глава 2): «старший брат» Хайпмена. Кайтит игрока на краю
+    // своей ауры (держит союзников в зоне лечения) и кидает телеграфированный стан-снаряд.
+    // hp/speed/damage/scale — в C.BOSS.BD ниже; здесь только поведение.
+    BOSSDOC: {
+        AURA_RADIUS: 550,            // радиус ауры лечения, px
+        HP_BONUS: 10,                // +макс. HP союзникам в ауре (×2 от хайпмена)
+        REGEN: 6,                    // лечение союзников в ауре, HP/сек (×2 от хайпмена)
+        STANDOFF: 550,               // целевая дистанция до игрока = радиус ауры
+        FLEE_DIST: 450,              // ближе — отходит (держит дистанцию)
+        STUN_INTERVAL: 3.5,          // период между бросками стана, сек
+        TELEGRAPH: 0.6,              // замах перед броском, сек
+        STUN_DURATION: 0.5,          // длительность стана игрока, сек
+        STUN_DAMAGE: 18,             // урон стан-снаряда
+    },
+
     // --- Базовые статы врагов: hp / speed / damage / размеры — в ОДНОМ месте ---
     // Перенесено 1:1 из make*-методов entities.js, чтобы баланс правился здесь. Множители
     // сложности главы накладываются поверх (scene._applyChapterEnemy/_applyChapterBoss).
@@ -95,6 +110,8 @@ const C = {
         B1: { hp: 50,  speed: 130, damage: 50, scale: 3.0 },
         B2: { hp: 100, speed: 150, damage: 60, scale: 3.5 },
         B3: { hp: 180, speed: 140, damage: 40, scale: 3.2 },
+        // Босс-доктор (этап 1, глава 2). hp = B3 (180) + 50; поведение — в C.BOSSDOC.
+        BD: { hp: 230, speed: 110, damage: 50, scale: 3.2 },
     },
 
     // --- Meta-progression caps (Game.h) ---
@@ -176,7 +193,7 @@ const CHAPTERS = [
     { id: 2, hue: 0xc800ff,
       floorKey: 'floor2', floorTint: 0x9a6cff, floorMode: 'stretch',
       enemyKey: 'enemy2', goblinKey: 'enemyV2', subwooferKey: 'enemy2_sub', mosherKey: 'enemy2_mosher', hypemanKey: 'enemy2_hype',
-      boss1Key: 'c2_boss1', boss2Key: 'c2_boss2', boss3Key: 'c2_boss3', encircleEvent: true,
+      boss1Key: 'c2_boss1', boss2Key: 'c2_boss2', boss3Key: 'c2_boss3', boss1Type: 'DOCTOR', encircleEvent: true,
       hpMult: 1.6, dmgMult: 1.35, spawnMult: 1.2, bossHpMult: 1.8 },
     { id: 3, hue: 0xff5050,
       floorKey: 'floor3', floorTint: 0xff6464, floorMode: 'stretch',

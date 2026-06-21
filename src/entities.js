@@ -65,6 +65,7 @@ class Player {
 
         this.isInvincible = false;
         this.invincibilityTimer = 0;
+        this.stunTimer = 0; // стан босса-доктора: блокирует движение/деш/стрельбу, пока > 0
 
         this.lastUpgradeId = -1;
         this.messageTimer = 0;
@@ -138,6 +139,7 @@ class Player {
 
     update(dt, arenaW, arenaH, input) {
         if (this.currentDashCooldown > 0) this.currentDashCooldown -= dt;
+        if (this.stunTimer > 0) this.stunTimer -= dt;
 
         let mvx = 0, mvy = 0;
         const s = this.sprite;
@@ -178,14 +180,16 @@ class Player {
                 this.dashPenaltyTimer = this.computeDashPenaltyDuration();
             }
         } else {
-            if (input.left) { mvx -= 1; this.facing = 'left'; }
-            if (input.right) { mvx += 1; this.facing = 'right'; }
-            if (input.up) { mvy -= 1; if (mvx === 0) this.facing = 'back'; }
-            if (input.down) { mvy += 1; if (mvx === 0) this.facing = 'front'; }
+            if (this.stunTimer <= 0) { // в стане ввод движения игнорируется
+                if (input.left) { mvx -= 1; this.facing = 'left'; }
+                if (input.right) { mvx += 1; this.facing = 'right'; }
+                if (input.up) { mvy -= 1; if (mvx === 0) this.facing = 'back'; }
+                if (input.down) { mvy += 1; if (mvx === 0) this.facing = 'front'; }
+            }
 
             this.isMoving = (mvx !== 0 || mvy !== 0);
 
-            if (this.hasDashUnlocked && input.space && this.currentDashCooldown <= 0) {
+            if (this.hasDashUnlocked && input.space && this.currentDashCooldown <= 0 && this.stunTimer <= 0) {
                 this.isDashing = true;
                 this.dashTimer = this.dashDuration;
                 this.currentDashCooldown = this.dashCooldown;
@@ -303,6 +307,7 @@ class Enemy {
         this.isBoss = false;
         this.isBoss2 = false;
         this.isBoss3 = false;
+        this.isBossDoc = false;
 
         // STROBE (босс 3 этапа) — собственный конечный автомат и параметры атак
         this.strobeState = 'ROAM';   // ROAM | TELEGRAPH | EXECUTE | RECOVER
@@ -324,6 +329,7 @@ class Enemy {
         this.goblinStationed = false; // гоблин-стрелок: встал на позицию (игрок его увидел) и больше не двигается
         this.throwTargetPos = { x: 0, y: 0 };
         this.justThrew = false;
+        this.justThrewStun = false; // босс-доктор: в этом кадре брошен стан-снаряд
         this.justFiredVolley = false;
         this.volleyTargetPos = { x: 0, y: 0 };
 
@@ -452,6 +458,22 @@ class Enemy {
         this.strobeAttack = -1;
     }
 
+    // Босс-доктор (этап 1, глава 2): аура лечения (считает сцена _updateHypeAuras) +
+    // телеграфированный стан-снаряд. Движение/стан — _updateBossDoctor. hp = B3 + 50.
+    makeBossDoctor(texKey) {
+        const st = C.BOSS.BD;
+        this.isBoss = true; this.isBossDoc = true;
+        this.type = EnemyType.BOSS;
+        if (texKey) { this.sprite.setTexture(texKey); this.sprite.setOrigin(0.5, 0.5); }
+        this.baseScale = C.ENEMY.BASE_SIZE / this.sprite.width;
+        this.hp = st.hp; this.maxHp = st.hp; this.speed = st.speed; this.damage = st.damage;
+        this.bossScale = this.baseScale * st.scale;
+        this.sprite.setScale(this.bossScale, this.bossScale);
+        this.docState = 'ROAM';
+        this.docTimer = 0;
+        this.throwTargetPos = { x: 0, y: 0 };
+    }
+
     // Конечный автомат STROBE: ROAM -> TELEGRAPH -> EXECUTE -> RECOVER, по кругу.
     // Атаки чередуются: 0 = вращающийся лазер, 1 = стробо-веер, 2 = затемнение+телепорт.
     // В ярости (HP<=50%) все фазы быстрее, веер даёт лишнее кольцо.
@@ -487,6 +509,8 @@ class Enemy {
             }
         } else if (this.strobeState === 'TELEGRAPH') {
             this.strobeTimer += dt;
+            // Лазер «нагревается» — босс разворачивает корпус в сторону выстрела (телеграф).
+            if (this.strobeAttack === 0) s.angle = this.beamAngle * DEG;
             const telDur = (this.strobeAttack === 0 ? 0.9 : this.strobeAttack === 1 ? 0.5 : 0.4) * tf;
             if (this.strobeTimer >= telDur) {
                 this.strobeTimer = 0;
@@ -508,10 +532,12 @@ class Enemy {
                 const dur = 1.6 * tf;
                 const prog = clamp(this.strobeTimer / dur, 0, 1);
                 this.beamAngle = this.beamStart + this.beamSweep * prog;
+                s.angle = this.beamAngle * DEG; // корпус следует за лучом во время свипа
                 if (this.strobeTimer >= dur) {
                     this.beamActive = false;
                     this.strobeState = 'RECOVER';
                     this.strobeTimer = 0;
+                    s.angle = 0; // вернуть корпус ровно перед восстановлением
                 }
             } else if (this.strobeAttack === 1) {
                 const rings = enraged ? 3 : 2;
@@ -576,6 +602,47 @@ class Enemy {
         }
     }
 
+    // Конечный автомат босса-доктора: кайтит игрока к краю своей ауры (держит союзников
+    // в зоне лечения), вплотную — отступает; раз в STUN_INTERVAL кидает стан-снаряд с замахом.
+    _updateBossDoctor(dt, px, py, arenaW, arenaH) {
+        const s = this.sprite;
+        this.justThrewStun = false;
+        const D = C.BOSSDOC;
+        const bs = this.bossScale || this.baseScale * 3.2;
+
+        // Движение: далеко (> STANDOFF) — подходит; вплотную (< FLEE_DIST) — отступает.
+        const dx = s.x - px, dy = s.y - py;
+        const d = Math.sqrt(dx * dx + dy * dy) || 1;
+        if (d < D.FLEE_DIST) {
+            s.x = clamp(s.x + (dx / d) * this.speed * dt, 0, arenaW);
+            s.y = clamp(s.y + (dy / d) * this.speed * dt, 0, arenaH);
+        } else if (d > D.STANDOFF) {
+            s.x = clamp(s.x - (dx / d) * this.speed * dt, 0, arenaW);
+            s.y = clamp(s.y - (dy / d) * this.speed * dt, 0, arenaH);
+        }
+        // Покачивание «в такт»; на телеграфе — лёгкий «замах» (раздувание).
+        this.walkTimer += dt * 6;
+        const charge = (this.docState === 'TELEGRAPH') ? 0.12 : 0;
+        s.setScale(bs * (1 + charge), bs * (1 + charge));
+        s.angle = Math.sin(this.walkTimer) * 4;
+
+        // Стан-бросок: ROAM (отсчёт) -> TELEGRAPH (замах, цель зафиксирована) -> бросок.
+        this.docTimer += dt;
+        if (this.docState === 'ROAM') {
+            if (this.docTimer >= D.STUN_INTERVAL) {
+                this.docState = 'TELEGRAPH';
+                this.docTimer = 0;
+                this.throwTargetPos = { x: px, y: py }; // зафиксировать точку броска
+            }
+        } else if (this.docState === 'TELEGRAPH') {
+            if (this.docTimer >= D.TELEGRAPH) {
+                this.docState = 'ROAM';
+                this.docTimer = 0;
+                this.justThrewStun = true; // сцена заспавнит стан-снаряд в throwTargetPos
+            }
+        }
+    }
+
     update(dt, px, py, arenaW, arenaH) {
         const s = this.sprite;
 
@@ -592,6 +659,8 @@ class Enemy {
             }
         } else if (this.type === EnemyType.BOSS && this.isBoss3) {
             this._updateStrobe(dt, px, py);
+        } else if (this.type === EnemyType.BOSS && this.isBossDoc) {
+            this._updateBossDoctor(dt, px, py, arenaW, arenaH);
         } else if (this.type === EnemyType.BOSS) {
             this.justFiredVolley = false;
             const bs = this.bossScale || this.baseScale * 3; // базовый масштаб для анимации/сброса
@@ -901,6 +970,7 @@ class EnemyProjectile {
 
     reinit(x, y, tx, ty) {
         this.isDestroyed = false;
+        this.isStun = false; // стан-снаряд босса-доктора (ставится сценой при спавне)
         this.damage = 20; // дефолт в новой шкале; фактический урон проставляется от врага-стрелка
         const dir = normalize(tx - x, ty - y);
         this.vx = dir.x * 550;

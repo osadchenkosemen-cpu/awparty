@@ -203,13 +203,19 @@ class MainScene extends Phaser.Scene {
     // Аура Хайпмена: врагам в радиусе даёт бонус к макс. HP (флэт, снимается при выходе)
     // и лечит их со временем. Toggle на вход/выход — без накопления/дрейфа.
     _updateHypeAuras(dt) {
-        let auras = null;
+        // Источники ауры: Хайпмены (обычная) и босс-доктор (сильнее). Считаем оба прохода
+        // в одном цикле по врагам; флаги e.hyped / e.docHyped независимы (бонусы складываются).
+        let auras = null, docs = null;
         for (const e of this.enemies) {
-            if (e.type === EnemyType.HYPEMAN && e.hp > 0) (auras || (auras = [])).push(e);
+            if (e.hp <= 0) continue;
+            if (e.type === EnemyType.HYPEMAN) (auras || (auras = [])).push(e);
+            else if (e.isBossDoc) (docs || (docs = [])).push(e);
         }
         const H = C.HYPEMAN, r2 = H.AURA_RADIUS * H.AURA_RADIUS;
+        const D = C.BOSSDOC, dr2 = D.AURA_RADIUS * D.AURA_RADIUS;
         for (const e of this.enemies) {
             if (e.isBoss || e.type === EnemyType.HYPEMAN || e.hp <= 0) continue;
+            // Аура Хайпмена (+H.HP_BONUS / реген).
             let inside = false;
             if (auras) {
                 for (const h of auras) {
@@ -222,6 +228,19 @@ class MainScene extends Phaser.Scene {
                 e.hyped = false; e.maxHp -= H.HP_BONUS; if (e.hp > e.maxHp) e.hp = e.maxHp;
             }
             if (e.hyped && e.hp < e.maxHp) e.hp = Math.min(e.maxHp, e.hp + H.REGEN * dt);
+            // Аура босса-доктора (сильнее: +D.HP_BONUS / реген). Снимается при смерти босса.
+            let dInside = false;
+            if (docs) {
+                for (const dd of docs) {
+                    if (distSq(e.sprite.x, e.sprite.y, dd.sprite.x, dd.sprite.y) <= dr2) { dInside = true; break; }
+                }
+            }
+            if (dInside && !e.docHyped) {
+                e.docHyped = true; e.maxHp += D.HP_BONUS; e.hp += D.HP_BONUS;
+            } else if (!dInside && e.docHyped) {
+                e.docHyped = false; e.maxHp -= D.HP_BONUS; if (e.hp > e.maxHp) e.hp = e.maxHp;
+            }
+            if (e.docHyped && e.hp < e.maxHp) e.hp = Math.min(e.maxHp, e.hp + D.REGEN * dt);
         }
     }
 
@@ -590,8 +609,8 @@ class MainScene extends Phaser.Scene {
         // Спавн врагов по фазе (см. scene_spawndriver.js).
         this._updateSpawning(dt, px, py);
 
-        // Стрельба (только когда игрок стоит)
-        if (!p.isMoving && p.currentCooldown <= 0) {
+        // Стрельба (только когда игрок стоит и не в стане)
+        if (!p.isMoving && p.currentCooldown <= 0 && p.stunTimer <= 0) {
             const ptr = this.input.activePointer;
             const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
             let target = null, minSq = 250 * 250;
@@ -641,6 +660,13 @@ class MainScene extends Phaser.Scene {
                 pr.damage = e.damage; // снаряд наследует урон стрелка (10/20/30 по этапу)
                 this.enemyProjectiles.push(pr);
             }
+            if (e.justThrewStun) {
+                // Босс-доктор: стан-снаряд в зафиксированную точку (урон + стан при попадании).
+                const pr = this.spawnEnemyProjectile(e.sprite.x, e.sprite.y, e.throwTargetPos.x, e.throwTargetPos.y);
+                pr.damage = C.BOSSDOC.STUN_DAMAGE;
+                pr.isStun = true;
+                this.enemyProjectiles.push(pr);
+            }
             if (e.justSoundWave) {
                 // Сабвуфер: направленная звуковая волна (сектор 90°) от врага к игроку.
                 const SW = C.SUBWOOFER;
@@ -667,6 +693,8 @@ class MainScene extends Phaser.Scene {
             const attackDist = e.isBoss ? C.COLLISION.BOSS_HIT_SQ : (e.type === EnemyType.GOBLIN ? C.COLLISION.GOBLIN_ATTACK_SQ : C.COLLISION.ENEMY_ATTACK_SQ);
             if (distSq(e.sprite.x, e.sprite.y, px, py) < attackDist) {
                 this._damagePlayer(e.damage, 0.2, 2 * e.damage);
+                // Бегунок-камикадзе: нанёс контактный урон и тут же гибнет (смерть/дроп — в handleEnemyDeaths).
+                if (e.type === EnemyType.FAST) e.hp = 0;
 
                 // Блейдмейл (шипы): враг, врезавшийся в героя, получает урон.
                 // Кулдаун на враге, чтобы контакт не сливал HP каждый кадр.
@@ -762,7 +790,10 @@ class MainScene extends Phaser.Scene {
             if (pr.isDestroyed) continue;
             if (distSq(pr.sprite.x, pr.sprite.y, px, py) < C.COLLISION.PROJECTILE_HIT_SQ) {
                 pr.isDestroyed = true;
+                const wasVuln = (p.iFrames <= 0 && !p.isDashing && !p.isInvincible);
                 this._damagePlayer(pr.damage, 0.15, 15);
+                // Стан босса-доктора: только если попадание реально прошло (деш/иммун доджат и стан).
+                if (pr.isStun && wasVuln) p.stunTimer = C.BOSSDOC.STUN_DURATION;
             }
         }
         this._filterRelease(this.enemyProjectiles, 'eproj', pr => pr.isDestroyed);

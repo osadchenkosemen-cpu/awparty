@@ -207,7 +207,9 @@ class EnemySpawner {
                 const bp = findSpawnPos(px, py, arenaW, arenaH, 800);
                 const bx = bp.x, by = bp.y;
                 const boss = new Enemy(scene, bx, by, scene._boss1Key || enemyKey);
-                boss.makeBoss();
+                // Глава с boss1Type:'DOCTOR' — босс этапа 1 это доктор; иначе обычный прыжок-босс.
+                if (scene.chapter && scene.chapter.boss1Type === 'DOCTOR') boss.makeBossDoctor(scene._boss1Key);
+                else boss.makeBoss();
                 scene._applyChapterBoss(boss);
                 if (isHardcore) { boss.speed *= 1.5; boss.hp *= SPAWN_HARDCORE_HP; boss.maxHp *= SPAWN_HARDCORE_HP; }
                 enemies.push(boss);

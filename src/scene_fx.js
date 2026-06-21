@@ -113,6 +113,32 @@ MainScene.prototype.drawWorldFx = function() {
             g.lineStyle(3, rgb(80, 255, 150), 0.4 + 0.25 * pulse);
             g.strokeCircle(e.sprite.x, e.sprite.y, rr);
         }
+        // Босс-доктор: его аура лечения (зелёная, шире) + маркер броска стана на замахе.
+        for (const e of this.enemies) {
+            if (!e.isBossDoc || e.hp <= 0) continue;
+            const pulse = (Math.sin(this.globalTime * 3) + 1) / 2;
+            const rr = C.BOSSDOC.AURA_RADIUS;
+            g.fillStyle(rgb(60, 255, 130), 0.05 + 0.04 * pulse);
+            g.fillCircle(e.sprite.x, e.sprite.y, rr);
+            g.lineStyle(3, rgb(80, 255, 150), 0.35 + 0.25 * pulse);
+            g.strokeCircle(e.sprite.x, e.sprite.y, rr);
+            if (e.docState === 'TELEGRAPH') {
+                const tp = e.throwTargetPos, mp = (Math.sin(this.globalTime * 18) + 1) / 2;
+                g.lineStyle(4, rgb(255, 80, 220), 0.5 + 0.4 * mp);
+                g.strokeCircle(tp.x, tp.y, 60 + 18 * mp);
+                g.lineStyle(2, rgb(255, 150, 240), 0.6);
+                g.strokeCircle(tp.x, tp.y, 16);
+            }
+        }
+        // Стан игрока: вращающееся кольцо «звёздочек» над головой.
+        if (this.player && this.player.stunTimer > 0) {
+            const ps = this.player.sprite, cx = ps.x, cy = ps.y - 70;
+            for (let i = 0; i < 3; i++) {
+                const a = this.globalTime * 10 + i * (2 * Math.PI / 3);
+                g.fillStyle(rgb(255, 230, 80), 0.95);
+                g.fillCircle(cx + Math.cos(a) * 26, cy + Math.sin(a) * 10, 6);
+            }
+        }
         // Лазер игрока (способность LASER): затухающий пробивающий луч
         if (this.playerBeam) {
             const pb = this.playerBeam;
