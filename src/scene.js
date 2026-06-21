@@ -187,6 +187,9 @@ class MainScene extends Phaser.Scene {
         // Подтянуть оба общих топа заранее, чтобы проверка рекорда шла против облака.
         this._refreshRemoteLeaderboard('normal');
         this._refreshRemoteLeaderboard('hardcore');
+
+        // Меню построено, первый кадр готов — убрать HTML-экран загрузки.
+        if (window.__awHideLoader) window.__awHideLoader();
     }
 
     // ===================== ХЕЛПЕРЫ =====================
