@@ -880,6 +880,7 @@ class MainScene extends Phaser.Scene {
                 break;
             }
         }
+        this._bossExists = bossExists; // нужно оверлеям: занят ли слот HP-бара босса (y=163)
         this.hud.update(p, s.totalCoins, bossExists, bossHpPct, formatTime(this.survivalTimer),
             this.runUpgradeLevels, this.equippedAbilities, this.abilityCooldowns, this.abilityMaxCooldowns);
 
@@ -1063,7 +1064,8 @@ class MainScene extends Phaser.Scene {
             this.clearText.y = 163; // на месте HP-бара босса (в безумном этапе босса нет — место свободно)
         } else if ((this.gamePhase === GamePhase.CLEARING || (this.gamePhase === GamePhase.PHASE_2 && this.phase2BossSpawned)) && !this.isGameOver) {
             this.clearText.setVisible(true).setText(t('clear_all') + '  [' + this.enemies.length + ']').setColor('#ff5050').setAlpha(1);
-            this.clearText.y = 18; // дефолт: вверху по центру (не наезжает на HP-бар живого босса)
+            // На месте HP-бара босса (y=163), если слот свободен; пока босс жив — сверху, чтобы не наезжать.
+            this.clearText.y = this._bossExists ? 18 : 163;
         } else this.clearText.setVisible(false);
 
         // Подсказка управления: первые ~10с забега, слева по центру, к концу окна затухает.
