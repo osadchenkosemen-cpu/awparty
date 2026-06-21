@@ -13,14 +13,15 @@ const RemoteLeaderboard = {
         };
     },
 
-    // Топ N по времени (asc — быстрее выше), при равенстве — по очкам (desc) для режима mode ('normal'|'hardcore').
-    // cb(entries|null) — null при ошибке/оффлайне. entries: [{ name, score, time, day, month, year }].
-    fetchTop(limit, mode, chapter, cb) {
+    // Топ N доски (mode, chapter). sort='score' → по очкам (desc), при равенстве время (asc);
+    // иначе по времени (asc), при равенстве очки (desc). cb(entries|null) — null при ошибке/оффлайне.
+    fetchTop(limit, mode, chapter, sort, cb) {
         if (!this.configured()) { cb(null); return; }
+        const order = (sort === 'score') ? 'score.desc,time.asc' : 'time.asc,score.desc';
         const url = SUPABASE_URL + '/rest/v1/leaderboard'
             + '?select=name,score,time,created_at&mode=eq.' + encodeURIComponent(mode || 'normal')
             + '&chapter=eq.' + (chapter || 1)
-            + '&order=time.asc,score.desc&limit=' + limit;
+            + '&order=' + order + '&limit=' + limit;
         fetch(url, { headers: this._headers() })
             .then(r => r.ok ? r.json() : Promise.reject(r.status))
             .then(rows => {

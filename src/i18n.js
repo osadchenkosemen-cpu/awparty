@@ -63,6 +63,7 @@ const I18N = {
         lb_your_place: 'Your place',
         lb_hint_chapter: '◀ ▶  Chapter',
         lb_hint_mode: '▲ ▼  Mode',
+        lb_hint_sort: 'TAB / click  -  Sort (time / score)',
         lb_hint_back: '[ ESC / ENTER  -  Back ]',
 
         // --- Пауза ---
@@ -283,6 +284,7 @@ const I18N = {
         lb_your_place: 'Ваше место',
         lb_hint_chapter: '◀ ▶  Глава',
         lb_hint_mode: '▲ ▼  Режим',
+        lb_hint_sort: 'TAB / клик  -  Сортировка (время / очки)',
         lb_hint_back: '[ ESC / ENTER  -  Назад ]',
 
         // --- Пауза ---

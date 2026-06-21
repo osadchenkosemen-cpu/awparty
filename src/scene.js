@@ -36,6 +36,7 @@ class MainScene extends Phaser.Scene {
         }
         this.lbView = 'normal';   // показываемый режим
         this.lbChapter = 1;       // показываемая глава
+        this.lbSort = 'time';     // сортировка вида: 'time' (приоритет) | 'score'
         this._lastRank = null;    // глобальное место последнего прохождения (для STAGE_CLEAR)
 
         // Слои: мир и интерфейс

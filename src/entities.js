@@ -797,7 +797,9 @@ class Enemy {
             const prepDuration = enraged ? 0.6 : 0.8;
             const recoverDuration = enraged ? 0.8 : 1.2;
             const dashSpeed = enraged ? 1600 : 1200;
-            if (this.isBoss2) this.speed = enraged ? 200 : 150;
+            // Глава 1: B2 движется чуть медленнее игрока без прокачек (220) — на 10, чтобы его
+            // можно было кайтить. В остальных главах прежнее поведение (150 / 200 в ярости).
+            if (this.isBoss2) this.speed = (this.scene.currentChapter === 1) ? 210 : (enraged ? 200 : 150);
 
             if (this.bossState === BossState.WALKING) {
                 const dir = normalize(px - s.x, py - s.y);
@@ -1265,17 +1267,25 @@ class Vinyl {
         this.sprite = scene.addWorld(scene.add.sprite(x, y, 'vinyl'));
         this.sprite.setOrigin(0.5, 0.5);
         this.sprite.setDisplaySize(50, 50);
+        this._baseSX = this.sprite.scaleX; this._baseSY = this.sprite.scaleY; // опора для пульса
         this.reinit(x, y);
     }
 
     reinit(x, y) {
         this.isCollected = false;
+        this._pulseT = 0;
         this.sprite.setPosition(x, y).setVisible(true);
         this.sprite.angle = 0;
+        this.sprite.setScale(this._baseSX, this._baseSY);
         return this;
     }
 
-    update(dt) { this.sprite.angle += 100 * dt; }
+    // «Дыхание»: плавная пульсация масштаба вместо вращения.
+    update(dt) {
+        this._pulseT += dt;
+        const p = 1 + 0.12 * Math.sin(this._pulseT * 4);
+        this.sprite.setScale(this._baseSX * p, this._baseSY * p);
+    }
 
     release() { this.sprite.setVisible(false); }
     destroy() { this.sprite.destroy(); }

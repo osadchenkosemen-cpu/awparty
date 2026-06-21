@@ -260,16 +260,29 @@ MainScene.prototype._buildLeaderboard = function() {
         this._mText(W / 2, 200, '◀  ' + t('lb_chapter') + ' ' + this.lbChapter + '  ▶', 46, '#ffd700', 0.5, 0.5, '#000', 3);
         const hc = this.lbView === 'hardcore';
         this._mText(W / 2, 258, (hc ? t('lb_hardcore') : t('lb_normal')), 40, hc ? '#ff5050' : '#00ffc8', 0.5, 0.5, '#000', 3);
-        const board = this.leaderboards[this.lbView][this.lbChapter] || [];
         const rowY0 = 330, rowH = 54;
         const colX = [W * 0.08, W * 0.16, W * 0.50, W * 0.66, W * 0.80];
+        // Доска показывается отсортированной по текущему виду (онлайн уже приходит в этом
+        // порядке — пересортировка идемпотентна; оффлайн — пересортировка локальных записей).
+        const board = (this.leaderboards[this.lbView][this.lbChapter] || []).slice()
+            .sort(this.lbSort === 'score' ? lbCompareScore : lbCompare);
         const hdrs = [t('lb_col_num'), t('lb_col_name'), t('lb_col_score'), t('lb_col_time'), t('lb_col_date')];
-        for (let i = 0; i < 5; i++) this._mText(colX[i], rowY0 - 38, hdrs[i], 26, '#00ffc8', 0, 0);
+        for (let i = 0; i < 5; i++) {
+            // Колонки «очки» (2) и «время» (3) — переключатели сортировки; активная помечается ▼.
+            const active = (i === 2 && this.lbSort === 'score') || (i === 3 && this.lbSort === 'time');
+            this._mText(colX[i], rowY0 - 38, hdrs[i] + (active ? ' ▼' : ''), 26, active ? '#ffd700' : '#00ffc8', 0, 0);
+        }
+        // Зоны клика для сортировки (по заголовкам ОЧКИ/ВРЕМЯ) — читаются в onPointerDown.
+        this._lbSortRects = {
+            score: { x: colX[2] - 10, y: rowY0 - 44, w: 170, h: 40 },
+            time:  { x: colX[3] - 10, y: rowY0 - 44, w: 170, h: 40 },
+        };
+        const hiName = this._pendingHighlight || ''; // подсветка «своей» записи по имени (устойчива к сортировке)
         for (let i = 0; i < 10; i++) {
             const y = rowY0 + i * rowH;
             const e = board[i];
-            const isNew = i === this.leaderboardNewEntryIndex;
             const filled = (e.score > 0 || e.time > 0);
+            const isNew = filled && hiName && e.name === hiName;
             const col = filled ? (isNew ? '#ffd700' : '#dcd7eb') : '#504b5f';
             this._mText(colX[0], y, '' + (i + 1), 30, col, 0, 0);
             if (filled) {
@@ -280,7 +293,7 @@ MainScene.prototype._buildLeaderboard = function() {
                 this._mText(colX[4], y, pad(e.day) + '.' + pad(e.month) + '.' + e.year, 30, col, 0, 0);
             } else this._mText(colX[1], y, '---', 30, col, 0, 0);
         }
-        this._mText(W / 2, H * 0.86, t('lb_hint_chapter') + '       ' + t('lb_hint_mode'), 30, '#7d78a0', 0.5, 0, '#000', 2);
+        this._mText(W / 2, H * 0.86, t('lb_hint_chapter') + '   ' + t('lb_hint_mode') + '   ' + t('lb_hint_sort'), 30, '#7d78a0', 0.5, 0, '#000', 2);
         this._mText(W / 2, H * 0.92, t('lb_hint_back'), 36, '#00ffc8', 0.5, 0);
     }
 
@@ -667,6 +680,9 @@ MainScene.prototype.onPointerDown = function(p) {
         if (st === GameState.MENU) {
             for (let i = 0; i < 3; i++) if (hit(W / 2 - 200, H * 0.45 + i * 110 - 40, 400, 80)) { this.selectedMenuIndex = i; this._menuActivate(); return; }
         } else if (st === GameState.LEADERBOARD) {
+            const sr = this._lbSortRects;
+            if (sr && hit(sr.score.x, sr.score.y, sr.score.w, sr.score.h)) { this._setLbSort('score'); return; }
+            if (sr && hit(sr.time.x, sr.time.y, sr.time.w, sr.time.h)) { this._setLbSort('time'); return; }
             if (hit(W / 2 - 150, H * 0.9 - 30, 300, 60)) this.setState(this.leaderboardFromMenu ? GameState.MENU : GameState.LOBBY);
         } else if (st === GameState.SETTINGS) {
             const rr = this._settingsResetRect();
@@ -966,6 +982,7 @@ MainScene.prototype.onKeyDown = function(e) {
             if (left) this._setLbBoard(this.lbView, ((this.lbChapter - 2 + nch) % nch) + 1);   // пред. глава (цикл)
             if (right) this._setLbBoard(this.lbView, (this.lbChapter % nch) + 1);              // след. глава (цикл)
             if (up || down) this._setLbBoard(this.lbView === 'normal' ? 'hardcore' : 'normal', this.lbChapter); // режим
+            if (code === 'Tab') { this._setLbSort(this.lbSort === 'time' ? 'score' : 'time'); if (e.preventDefault) e.preventDefault(); } // сортировка время/очки
             if (esc || code === 'Enter') this.setState(this.leaderboardFromMenu ? GameState.MENU : GameState.LOBBY);
         } else if (st === GameState.NAME_INPUT) {
             if (code === 'Backspace') { this.nameInput = this.nameInput.slice(0, -1); this._nameError = ''; this.rebuildMenu(); if (e.preventDefault) e.preventDefault(); }

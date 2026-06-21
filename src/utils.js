@@ -57,6 +57,16 @@ function lbCompare(a, b) {
     return (a.time || 0) - (b.time || 0) || (b.score || 0) - (a.score || 0);
 }
 
+// Сравнение для вида «по очкам»: приоритет ОЧКАМ (больше = выше), при равенстве — время
+// (меньше = выше). Пустые записи всегда в конце. Для сортировки «лучшие сверху».
+function lbCompareScore(a, b) {
+    const aEmpty = !((a.time || 0) > 0 || (a.score || 0) > 0);
+    const bEmpty = !((b.time || 0) > 0 || (b.score || 0) > 0);
+    if (aEmpty !== bEmpty) return aEmpty ? 1 : -1;
+    if (aEmpty && bEmpty) return 0;
+    return (b.score || 0) - (a.score || 0) || (a.time || 0) - (b.time || 0);
+}
+
 // Пустая запись таблицы рекордов.
 function lbEmptyEntry() {
     return { name: '', score: 0, time: 0, day: 0, month: 0, year: 0 };

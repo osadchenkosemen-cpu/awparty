@@ -77,7 +77,9 @@ MainScene.prototype._nameTakenLocally = function(name) {
 MainScene.prototype._refreshRemoteLeaderboard = function(mode, chapter) {
         mode = mode || this.lbView; chapter = chapter || this.lbChapter;
         if (!RemoteLeaderboard.configured()) return;
-        RemoteLeaderboard.fetchTop(10, mode, chapter, (rows) => {
+        const sort = this.lbSort; // фиксируем сортировку запроса (на момент колбэка может смениться)
+        RemoteLeaderboard.fetchTop(10, mode, chapter, sort, (rows) => {
+            if (sort !== this.lbSort) return; // пользователь успел переключить сортировку — игнор
             if (!rows) return; // ошибка/оффлайн — оставляем локальную таблицу
             const lb = [];
             for (let i = 0; i < 10; i++) lb.push(rows[i] || lbEmptyEntry());
@@ -101,6 +103,15 @@ MainScene.prototype._setLbBoard = function(mode, chapter) {
         this.leaderboardNewEntryIndex = -1;
         this.audio.play('sfx_menu_click');
         this._refreshRemoteLeaderboard(mode, chapter);
+        if (this.currentState === GameState.LEADERBOARD) this.rebuildMenu();
+    }
+
+    // Переключить сортировку вида ('time' | 'score') и перезапросить онлайн-топ в нужном порядке.
+MainScene.prototype._setLbSort = function(sort) {
+        if (this.lbSort === sort) return;
+        this.lbSort = sort;
+        this.audio.play('sfx_menu_click');
+        this._refreshRemoteLeaderboard(this.lbView, this.lbChapter); // истинный топ по новому порядку
         if (this.currentState === GameState.LEADERBOARD) this.rebuildMenu();
     }
 
