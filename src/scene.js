@@ -1058,8 +1058,10 @@ class MainScene extends Phaser.Scene {
             const blink = 0.6 + 0.4 * Math.sin(this.globalTime * 6);
             this.clearText.setVisible(true).setText(t('crazy_hint'))
                 .setColor('#00e6ff').setAlpha(blink);
+            this.clearText.y = 163; // на месте HP-бара босса (в безумном этапе босса нет — место свободно)
         } else if ((this.gamePhase === GamePhase.CLEARING || (this.gamePhase === GamePhase.PHASE_2 && this.phase2BossSpawned)) && !this.isGameOver) {
             this.clearText.setVisible(true).setText(t('clear_all') + '  [' + this.enemies.length + ']').setColor('#ff5050').setAlpha(1);
+            this.clearText.y = 18; // дефолт: вверху по центру (не наезжает на HP-бар живого босса)
         } else this.clearText.setVisible(false);
 
         // Предупреждения перед боссом

@@ -318,8 +318,6 @@ class Enemy {
         this.beamAngle = 0;          // текущий угол луча
         this.beamLen = 2400;
         this.beamWidth = 80;
-        this.beamStart = 0;
-        this.beamSweep = Math.PI;
         this.burstCount = 0;
         this.burstTimer = 0;
         this._teleported = false;
@@ -499,31 +497,26 @@ class Enemy {
                 this.strobeAttack = (this.strobeAttack + 1) % 3;
                 this.strobeTimer = 0;
                 this.strobeState = 'TELEGRAPH';
-                this.beamAngle = Math.atan2(py - s.y, px - s.x); // зафиксировать прицел
+                this.beamAngle = Math.atan2(py - s.y, px - s.x); // аимбот: точный прицел в игрока (фиксируется)
                 this.beamActive = false;
                 this.beamTelegraph = (this.strobeAttack === 0);
-                this.beamSweep = (Math.random() < 0.5 ? 1 : -1) * Math.PI; // cw/ccw выбираем заранее — видно на нагреве
                 this.burstCount = 0;
                 this.burstTimer = 0;
                 this._teleported = false;
-                s.setScale(bs, bs); s.angle = 0; // снять «шаг» перед атакой
+                s.setScale(bs, bs);
+                s.angle = (this.strobeAttack === 0) ? this.beamAngle * DEG : 0; // лазер: корпус наведён на цель и замирает
             }
         } else if (this.strobeState === 'TELEGRAPH') {
             this.strobeTimer += dt;
-            // Лазер «нагревается» — луч уже начинает поворот в сторону свипа (cw/ccw),
-            // чтобы игрок заранее читал направление; на выстреле свип продолжается отсюда же.
-            if (this.strobeAttack === 0) {
-                this.beamAngle += Math.sign(this.beamSweep) * C.STROBE_WINDUP_SPEED * dt;
-                s.angle = this.beamAngle * DEG;
-            }
-            const telDur = (this.strobeAttack === 0 ? 0.9 : this.strobeAttack === 1 ? 0.5 : 0.4) * tf;
+            // Лазер: прицел в игрока уже зафиксирован (аимбот), босс ЗАМИРАЕТ на 0.2с —
+            // прицел и корпус неподвижны, затем выстрел. Никакого вращения.
+            const telDur = (this.strobeAttack === 0 ? 0.2 : this.strobeAttack === 1 ? 0.5 : 0.4) * tf;
             if (this.strobeTimer >= telDur) {
                 this.strobeTimer = 0;
                 this.strobeState = 'EXECUTE';
                 if (this.strobeAttack === 0) {
                     this.beamTelegraph = false;
                     this.beamActive = true;
-                    this.beamStart = this.beamAngle; // продолжаем свип с угла, набранного на нагреве (beamSweep уже выбран)
                 } else if (this.strobeAttack === 1) {
                     this.burstTimer = 1.0; // чтобы первое кольцо вылетело сразу
                 } else if (this.strobeAttack === 2) {
@@ -533,10 +526,8 @@ class Enemy {
         } else if (this.strobeState === 'EXECUTE') {
             this.strobeTimer += dt;
             if (this.strobeAttack === 0) {
-                const dur = 1.6 * tf;
-                const prog = clamp(this.strobeTimer / dur, 0, 1);
-                this.beamAngle = this.beamStart + this.beamSweep * prog;
-                s.angle = this.beamAngle * DEG; // корпус следует за лучом во время свипа
+                // Прямой луч в зафиксированную точку — без свипа и вращения, держится коротко.
+                const dur = 0.4 * tf;
                 if (this.strobeTimer >= dur) {
                     this.beamActive = false;
                     this.strobeState = 'RECOVER';
