@@ -6,8 +6,9 @@ const SAVE_KEY = 'awparty_save';
 // v3 — рекорды ранжируются по ВРЕМЕНИ прохождения (быстрее = выше), при равенстве — очки.
 // Новый ключ, чтобы старые score-ранжированные записи не смешивались с новой метрикой
 // (локальный кэш сбрасывается; общий онлайн-топ подтянется заново при открытии экрана).
-const LB_KEY = 'awparty_leaderboard_v3';        // обычный режим
-const LB_KEY_HC = 'awparty_leaderboard_hc_v3';  // hardcore
+const LB_KEY = 'awparty_leaderboard_v3';        // legacy normal (миграция в главу 1)
+const LB_KEY_HC = 'awparty_leaderboard_hc_v3';  // legacy hardcore (миграция в главу 1)
+const LB_KEY_PREFIX = 'awparty_lb_v4_';         // новый ключ: awparty_lb_v4_<mode>_<chapter>
 
 const SaveSystem = {
     // Значения по умолчанию из Game::loadGameData
@@ -167,13 +168,17 @@ const SaveSystem = {
     },
 
     // Таблица рекордов: массив из 10 записей { name, score, time, day, month, year }.
-    // hardcore=true — отдельная таблица для хард-режима.
-    loadLeaderboard(hardcore) {
-        const key = hardcore ? LB_KEY_HC : LB_KEY;
+    // Отдельная таблица на (mode 'normal'|'hardcore', chapter 1..N). Глава 1 без v4-данных
+    // мигрирует из старого ключа v3 (для непрерывности локального кэша).
+    loadLeaderboard(mode, chapter) {
+        mode = mode || 'normal'; chapter = chapter || 1;
         const empty = [];
         for (let i = 0; i < 10; i++) empty.push(lbEmptyEntry());
         let raw = null;
-        try { raw = localStorage.getItem(key); } catch (e) { raw = null; }
+        try { raw = localStorage.getItem(LB_KEY_PREFIX + mode + '_' + chapter); } catch (e) { raw = null; }
+        if (!raw && chapter === 1) { // миграция legacy v3 → глава 1
+            try { raw = localStorage.getItem(mode === 'hardcore' ? LB_KEY_HC : LB_KEY); } catch (e) { raw = null; }
+        }
         if (!raw) return empty;
         try {
             const arr = JSON.parse(raw);
@@ -183,8 +188,8 @@ const SaveSystem = {
         } catch (e) { return empty; }
     },
 
-    saveLeaderboard(lb, hardcore) {
-        const key = hardcore ? LB_KEY_HC : LB_KEY;
-        try { localStorage.setItem(key, JSON.stringify(lb)); } catch (e) {}
+    saveLeaderboard(lb, mode, chapter) {
+        mode = mode || 'normal'; chapter = chapter || 1;
+        try { localStorage.setItem(LB_KEY_PREFIX + mode + '_' + chapter, JSON.stringify(lb)); } catch (e) {}
     },
 };

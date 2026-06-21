@@ -186,6 +186,7 @@ MainScene.prototype.handleEnemyDeaths = function(px, py) {
                 }
                 for (let k = 0; k < 2; k++) this.vinyls.push(this.spawnVinyl(ex + randInt(80) - 40, ey + randInt(80) - 40));
                 this.bossSouls.push(new BossSoul(this, ex, ey, 1));
+                this._firstBossKilled = true; // первый босс убит — смерть теперь засчитывается в топ
                 if (this.gamePhase === GamePhase.PHASE_1) this.gamePhase = GamePhase.CLEARING;
             } else {
                 // Гем и монета разнесены в стороны, чтобы опыт не лежал под монетой.

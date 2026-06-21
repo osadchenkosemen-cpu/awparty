@@ -59,6 +59,10 @@ const I18N = {
         lb_col_time: 'TIME',
         lb_col_date: 'DATE',
         lb_hint_switch: '<  /  >   -   Normal / Hardcore',
+        lb_chapter: 'CHAPTER',
+        lb_your_place: 'Your place',
+        lb_hint_chapter: '◀ ▶  Chapter',
+        lb_hint_mode: '▲ ▼  Mode',
         lb_hint_back: '[ ESC / ENTER  -  Back ]',
 
         // --- Пауза ---
@@ -275,6 +279,10 @@ const I18N = {
         lb_col_time: 'ВРЕМЯ',
         lb_col_date: 'ДАТА',
         lb_hint_switch: '<  /  >   -   Обычный / Хардкор',
+        lb_chapter: 'ГЛАВА',
+        lb_your_place: 'Ваше место',
+        lb_hint_chapter: '◀ ▶  Глава',
+        lb_hint_mode: '▲ ▼  Режим',
         lb_hint_back: '[ ESC / ENTER  -  Назад ]',
 
         // --- Пауза ---

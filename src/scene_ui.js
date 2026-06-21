@@ -255,10 +255,11 @@ MainScene.prototype._buildLeaderboard = function() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x000000, 160 / 255).setOrigin(0, 0));
         this._mText(W / 2, 50, t('lb_title'), 100, '#ffd700', 0.5, 0, '#b40050', 5);
-        // Заголовок режима + переключатель.
+        // Глава (←/→) + режим (↑/↓).
+        this._mText(W / 2, 160, '◀  ' + t('lb_chapter') + ' ' + this.lbChapter + '  ▶', 46, '#ffd700', 0.5, 0.5, '#000', 3);
         const hc = this.lbView === 'hardcore';
-        this._mText(W / 2, 215, '<  ' + (hc ? t('lb_hardcore') : t('lb_normal')) + '  >', 44, hc ? '#ff5050' : '#00ffc8', 0.5, 0.5, '#000', 3);
-        const board = this.leaderboards[this.lbView];
+        this._mText(W / 2, 225, (hc ? t('lb_hardcore') : t('lb_normal')), 40, hc ? '#ff5050' : '#00ffc8', 0.5, 0.5, '#000', 3);
+        const board = this.leaderboards[this.lbView][this.lbChapter] || [];
         const rowY0 = 300, rowH = 54;
         const colX = [W * 0.08, W * 0.16, W * 0.50, W * 0.66, W * 0.80];
         const hdrs = [t('lb_col_num'), t('lb_col_name'), t('lb_col_score'), t('lb_col_time'), t('lb_col_date')];
@@ -278,7 +279,7 @@ MainScene.prototype._buildLeaderboard = function() {
                 this._mText(colX[4], y, pad(e.day) + '.' + pad(e.month) + '.' + e.year, 30, col, 0, 0);
             } else this._mText(colX[1], y, '---', 30, col, 0, 0);
         }
-        this._mText(W / 2, H * 0.86, t('lb_hint_switch'), 30, '#7d78a0', 0.5, 0, '#000', 2);
+        this._mText(W / 2, H * 0.86, t('lb_hint_chapter') + '       ' + t('lb_hint_mode'), 30, '#7d78a0', 0.5, 0, '#000', 2);
         this._mText(W / 2, H * 0.92, t('lb_hint_back'), 36, '#00ffc8', 0.5, 0);
     }
 
@@ -431,6 +432,10 @@ MainScene.prototype._buildStageClear = function() {
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x06001a, 235 / 255).setOrigin(0, 0));
         this._mText(W / 2, 70, t('stageclear_title'), 92, '#00e6ff', 0.5, 0.5, '#c800ff', 4);
         this._mText(W / 2, 138, t('stageclear_sub'), 30, '#bfb8e0', 0.5, 0.5, '#000', 2);
+        // Глобальное место в таблице главы (только онлайн; приходит асинхронно после submit).
+        if (this._lastRank != null) {
+            this._mText(W / 2, 180, t('lb_your_place') + '  #' + this._lastRank, 40, '#ffd700', 0.5, 0.5, '#000', 3);
+        }
 
         // Таблица: строка-заголовок + 3 этапа + ИТОГО (счёт — приоритетная метрика).
         const cols = ['', t('summary_score'), t('summary_time'), t('summary_kills'), t('summary_coins')];
@@ -721,7 +726,7 @@ MainScene.prototype._menuActivate = function() {
         this.audio.play('sfx_menu_click');
         const i = this.selectedMenuIndex;
         if (i === 0) this.setState(GameState.LOBBY);
-        else if (i === 1) { this.leaderboardFromMenu = true; this.leaderboardNewEntryIndex = -1; this._pendingHighlight = null; this.lbView = 'normal'; this.setState(GameState.LEADERBOARD); }
+        else if (i === 1) { this.leaderboardFromMenu = true; this.leaderboardNewEntryIndex = -1; this._pendingHighlight = null; this.lbView = 'normal'; this.lbChapter = 1; this.setState(GameState.LEADERBOARD); }
         else if (i === 2) this.setState(GameState.SETTINGS);
     }
 MainScene.prototype._lobbyActivate = function() {
@@ -812,21 +817,23 @@ MainScene.prototype._confirmRename = function() {
     // Переименовать игрока в локальном кэше обеих таблиц; слить дубликаты по лучшему времени.
 MainScene.prototype._applyLocalRename = function(oldName, newName) {
         for (const mode of ['normal', 'hardcore']) {
-            const src = this.leaderboards[mode] || [];
-            const merged = []; // лучшая запись на имя
-            for (const raw of src) {
-                if (!raw || (raw.score <= 0 && raw.time <= 0)) continue;
-                const e = Object.assign({}, raw);
-                if (e.name === oldName) e.name = newName;
-                const j = merged.findIndex(m => m.name === e.name);
-                if (j === -1) merged.push(e);
-                else if (lbCompare(e, merged[j]) < 0) merged[j] = e;
+            for (let c = 1; c <= CHAPTERS.length; c++) {
+                const src = this.leaderboards[mode][c] || [];
+                const merged = []; // лучшая запись на имя
+                for (const raw of src) {
+                    if (!raw || (raw.score <= 0 && raw.time <= 0)) continue;
+                    const e = Object.assign({}, raw);
+                    if (e.name === oldName) e.name = newName;
+                    const j = merged.findIndex(m => m.name === e.name);
+                    if (j === -1) merged.push(e);
+                    else if (lbCompare(e, merged[j]) < 0) merged[j] = e;
+                }
+                merged.sort(lbCompare);
+                const list = merged.slice(0, 10);
+                while (list.length < 10) list.push(lbEmptyEntry());
+                this.leaderboards[mode][c] = list;
+                SaveSystem.saveLeaderboard(list, mode, c);
             }
-            merged.sort(lbCompare);
-            const list = merged.slice(0, 10);
-            while (list.length < 10) list.push(lbEmptyEntry());
-            this.leaderboards[mode] = list;
-            SaveSystem.saveLeaderboard(list, mode === 'hardcore');
         }
     }
 
@@ -951,8 +958,10 @@ MainScene.prototype.onKeyDown = function(e) {
                 }
             }
         } else if (st === GameState.LEADERBOARD) {
-            if (left) this._setLbView('normal');
-            if (right) this._setLbView('hardcore');
+            const nch = CHAPTERS.length;
+            if (left) this._setLbBoard(this.lbView, ((this.lbChapter - 2 + nch) % nch) + 1);   // пред. глава (цикл)
+            if (right) this._setLbBoard(this.lbView, (this.lbChapter % nch) + 1);              // след. глава (цикл)
+            if (up || down) this._setLbBoard(this.lbView === 'normal' ? 'hardcore' : 'normal', this.lbChapter); // режим
             if (esc || code === 'Enter') this.setState(this.leaderboardFromMenu ? GameState.MENU : GameState.LOBBY);
         } else if (st === GameState.NAME_INPUT) {
             if (code === 'Backspace') { this.nameInput = this.nameInput.slice(0, -1); this._nameError = ''; this.rebuildMenu(); if (e.preventDefault) e.preventDefault(); }
@@ -987,7 +996,7 @@ MainScene.prototype.onKeyDown = function(e) {
             if (this.isGameOver) {
                 if (code === 'KeyR') { this.saveGame(); this.resetGame(); this.rebuildMenu(); }
                 if (code === 'KeyQ') { this.saveGame(); this.setState(GameState.LOBBY); }
-                if (code === 'KeyL') { this.leaderboardFromMenu = false; this._pendingHighlight = null; this.lbView = 'normal'; this.setState(GameState.LEADERBOARD); }
+                if (code === 'KeyL') { this.leaderboardFromMenu = false; this._pendingHighlight = null; this.lbView = 'normal'; this.lbChapter = 1; this.setState(GameState.LEADERBOARD); }
             } else {
                 if (pauseKey) { this.selectedPauseIndex = 0; this.setState(GameState.PAUSED); }
                 if (code === 'KeyQ') this.activateAbility(0);

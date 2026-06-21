@@ -116,18 +116,14 @@ MainScene.prototype._enterPortal = function() {
         const next = this.currentChapter + 1;
         if (next <= CHAPTERS.length && this.save.maxChapterUnlocked < next) this.save.maxChapterUnlocked = next;
         this.saveGame();
-        // Результат проходит в таблицу: если ник уже есть — тихо отправляем и показываем итоги.
-        // Если ника ещё нет (первый забег) — просим ввести, а итоги покажем после ввода.
-        if (this.qualifiesForLeaderboard(this.runScore, this.survivalTimer, this._runMode())) {
-            if (this.save.playerName) {
-                this._submitScore(this.save.playerName, false);
-            } else {
-                this._stageClearAfterName = true; // после ввода ника вернуться к итогам, а не к таблице
-                this.nameInput = '';
-                this._nameError = '';
-                this.setState(GameState.NAME_INPUT);
-                return;
-            }
+        // Рекорд пишется ТОЛЬКО здесь (пройдены все 3 этапа). Есть ник — сразу записываем
+        // результат и считаем место; нет ника — просим ввести, запись после подтверждения.
+        if (this.save.playerName) {
+            this._submitChapterResult(this.save.playerName); // внутри: submit + место + STAGE_CLEAR
+        } else {
+            this._pendingPortalSubmit = true;
+            this.nameInput = '';
+            this._nameError = '';
+            this.setState(GameState.NAME_INPUT);
         }
-        this.setState(GameState.STAGE_CLEAR);
     };

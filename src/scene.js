@@ -28,8 +28,15 @@ class MainScene extends Phaser.Scene {
         // Отключаем контекстное меню браузера на canvas (ПКМ используется в игре)
         if (this.input && this.input.mouse) this.input.mouse.disableContextMenu();
         // Две таблицы рекордов: обычная и hardcore. lbView — какая сейчас показывается.
-        this.leaderboards = { normal: SaveSystem.loadLeaderboard(false), hardcore: SaveSystem.loadLeaderboard(true) };
-        this.lbView = 'normal';
+        // Таблицы рекордов: по главам × режим. leaderboards[mode][chapter] = [10 записей].
+        this.leaderboards = { normal: {}, hardcore: {} };
+        for (let c = 1; c <= CHAPTERS.length; c++) {
+            this.leaderboards.normal[c] = SaveSystem.loadLeaderboard('normal', c);
+            this.leaderboards.hardcore[c] = SaveSystem.loadLeaderboard('hardcore', c);
+        }
+        this.lbView = 'normal';   // показываемый режим
+        this.lbChapter = 1;       // показываемая глава
+        this._lastRank = null;    // глобальное место последнего прохождения (для STAGE_CLEAR)
 
         // Слои: мир и интерфейс
         this.worldLayer = this.add.layer();
@@ -411,6 +418,7 @@ class MainScene extends Phaser.Scene {
 
         this.survivalTimer = 0; this.vinylSpawnTimer = 0; this.phase2BossSpawned = false; this.phase3BossSpawned = false;
         this._boss3Alive = false; // живой ли босс-3 сейчас (гейт спавна; замена enemies.some каждый кадр)
+        this._firstBossKilled = false; // в этом забеге убит босс 1-го этапа → смерть тоже даёт ввод ника/топ
         this.gamePhase = GamePhase.PHASE_1; this.phaseNotifTimer = 0; this.activeStep = 1;
         this.phase2Timer = 0; this.phase3Timer = 0; this.phaseTransitionTimer = -1; this.phaseEventFired = false;
         this._encPhase = 0; this._encTimer = 0; this._encAt = 0; this._encDone = false; // событие «окружение» (раз за этап)
@@ -442,7 +450,8 @@ class MainScene extends Phaser.Scene {
         } else {
             this.arena.setTileScale(1, 1);
         }
-        this.crazyMode = false; this.portal = null; this._stageClearAfterName = false;
+        this.crazyMode = false; this.portal = null;
+        this._pendingPortalSubmit = false; this._nameClaimOnly = false; this._lastRank = null;
         if (this.portalSprite) { this.portalSprite.destroy(); this.portalSprite = null; }
         this.stageStats = []; this._stagePrev = { time: 0, kills: 0, coins: 0, score: 0 };
         this.slamRingTimer = -1; this.playerBeam = null; this.soundWaves.length = 0;
@@ -500,8 +509,8 @@ class MainScene extends Phaser.Scene {
             const ducked = (ns === GameState.PAUSED || ns === GameState.LEVEL_UP || ns === GameState.ABILITY_SELECT);
             this.audio.setDuck(ducked ? 0.5 : 1);
         }
-        // При открытии таблицы — тянем свежий общий топ показываемого режима.
-        if (ns === GameState.LEADERBOARD) this._refreshRemoteLeaderboard(this.lbView);
+        // При открытии таблицы — тянем свежий общий топ показываемой главы/режима.
+        if (ns === GameState.LEADERBOARD) this._refreshRemoteLeaderboard(this.lbView, this.lbChapter);
     }
 
     // Кастомный курсор канваса (порт setMouseCursor: прицел в игре, стрелка в меню)
