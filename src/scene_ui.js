@@ -250,12 +250,16 @@ MainScene.prototype._buildLeaderboard = function() {
             score: { x: colX[3] - 10, y: rowY0 - 44, w: 170, h: 40 },
         };
         const hiName = this._pendingHighlight || '';
+        const LB_MEDAL = ['#cfe9ff', '#ffd700', '#cd7f32'];
         for (let i = 0; i < 10; i++) {
             const y = rowY0 + i * rowH;
             const e = board[i];
             const filled = (e.score > 0 || e.time > 0);
             const isNew = filled && hiName && e.name === hiName;
-            const col = filled ? (isNew ? '#ffd700' : '#dcd7eb') : '#504b5f';
+            let col;
+            if (!filled) col = '#504b5f';
+            else if (i < 3) col = LB_MEDAL[i];
+            else col = isNew ? '#ffd700' : '#dcd7eb';
             this._mText(colX[0], y, '' + (i + 1), 30, col, 0, 0);
             if (filled) {
                 this._mText(colX[1], y, e.name, 30, col, 0, 0);
