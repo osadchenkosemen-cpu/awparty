@@ -513,7 +513,7 @@ MainScene.prototype._buildLevelUp = function() {
             const objs = [rect, title, icon, desc, badgeObj];
             const baseY = objs.map(o => o.y);
             const baseSX = [1, 1, iscale, 1, 1];
-            this.levelUpCards.push({ rect, objs, baseY, baseSX, uId });
+            this.levelUpCards.push({ rect, objs, baseY, baseSX, uId, stroke: st.stroke, sw: st.sw });
         }
         this._animateLevelUp();
     }

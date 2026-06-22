@@ -1069,15 +1069,16 @@ class MainScene extends Phaser.Scene {
         const t = this.levelUpAnimTimer;
         const easeOut = 1 - (1 - t) * (1 - t) * (1 - t);
         const yOffset = (1 - easeOut) * 1000;
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < this.levelUpCards.length; i++) {
             const card = this.levelUpCards[i];
+            const sel = this.selectedLevelUpIndex === i;
             let scale = 0.95 + 0.05 * easeOut;
-            if (this.selectedLevelUpIndex === i) scale = 1.05;
+            if (sel) scale = 1.05;
             card.objs.forEach((o, idx) => {
                 o.y = card.baseY[idx] + yOffset;
                 o.setScale(scale * (card.baseSX ? card.baseSX[idx] : 1));
             });
-            card.rect.setStrokeStyle(5, this.selectedLevelUpIndex === i ? 0xffc800 : 0x9600ff);
+            card.rect.setStrokeStyle(sel ? card.sw + 2 : card.sw, sel ? 0xffffff : card.stroke);
         }
     }
 
