@@ -32,6 +32,10 @@ class Player {
         this.bladeMail = false;
         this.pierce = false;
 
+        this.damageReduction = 0;
+        this.sphereLevel = 0;
+        this.doubleTapLevel = 0;
+
         this.hasDashUnlocked = false;
         this.dashLevel = 0;
         this.isDashing = false;
@@ -307,6 +311,7 @@ class Enemy {
 
         this.hitFlashTimer = 0;
         this.bladeMailCd = 0;
+        this.sphereCd = 0;
 
         this.sprite = scene.addWorld(scene.add.sprite(x, y, texKey));
         this.sprite.setOrigin(0.5, 0.5);

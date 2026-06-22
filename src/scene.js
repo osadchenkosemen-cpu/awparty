@@ -112,7 +112,7 @@ class MainScene extends Phaser.Scene {
         this.regenTimer = 0;
         this.shotsFired = 0;
 
-        this.runUpgradeLevels = [0, 0, 0, 0, 0, 0, 0];
+        this.runUpgradeLevels = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
         this.selectedMenuIndex = 0;
         this.selectedSettingIndex = 0;
@@ -358,6 +358,7 @@ class MainScene extends Phaser.Scene {
         p.sprite.setPosition(C.ARENA_WIDTH / 2, C.ARENA_HEIGHT / 2);
         p.isInvincible = false; p.invincibilityTimer = 0;
         p.bladeMail = false; p.pierce = false;
+        p.damageReduction = 0; p.sphereLevel = 0; p.doubleTapLevel = 0;
 
         this.survivalTimer = 0; this.vinylSpawnTimer = 0; this.phase2BossSpawned = false; this.phase3BossSpawned = false;
         this._boss3Alive = false;
@@ -406,7 +407,7 @@ class MainScene extends Phaser.Scene {
         this._releaseAll(this.dmgTexts, 'dmgText');
         this.player.ghosts.forEach(g => g.img.destroy()); this.player.ghosts.length = 0;
 
-        for (let i = 0; i < 7; i++) this.runUpgradeLevels[i] = 0;
+        for (let i = 0; i < CARD_COUNT; i++) this.runUpgradeLevels[i] = 0;
         for (let i = 0; i < 3; i++) { this.equippedAbilities[i] = -1; this.abilityCooldowns[i] = 0; this.abilityMaxCooldowns[i] = 0; }
         this.pendingAbilityCount = 0;
         this.spawner.reset();
