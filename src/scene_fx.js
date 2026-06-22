@@ -1,31 +1,21 @@
-// scene_fx.js — рендер мировых эффектов MainScene (вынесено из scene.js).
-// Методы навешиваются на MainScene.prototype (класс объявлен в scene.js, грузится раньше).
-// Это чистый рендер из состояния (мутаций игровой логики нет): стены-волны, трейлы пуль,
-// кольцо слэма, волны Сабвуфера, ауры Хайпмена, лучи (игрок/STROBE), портал, стрелка-босс.
 
-// Стены арены в виде бегущих звуковых волн (вместо статичной красной рамки).
-// Рисуем по 4 краям синусоиду, смещённую внутрь; фаза бежит со временем,
-// амплитуда и цвет пульсируют (как аудио-визуализация).
 MainScene.prototype._drawSoundWaveWalls = function(g) {
         const W = C.ARENA_WIDTH, H = C.ARENA_HEIGHT, tm = this.globalTime;
         const step = 26;
-        const k = (Math.PI * 2) / 220;                 // длина волны ~220px
-        const speed = 2;                                // скорость бегущей волны (медленнее)
-        const A = 16 + 10 * (0.5 + 0.5 * Math.sin(tm * 1.6)); // амплитуда + плавный пульс
+        const k = (Math.PI * 2) / 220;
+        const speed = 2;
+        const A = 16 + 10 * (0.5 + 0.5 * Math.sin(tm * 1.6));
         const pulse = 0.5 + 0.5 * Math.sin(tm * 3);
-        const col = rgb(255, 20 + 80 * pulse, 80 + 60 * pulse); // неон: красный<->розовый
+        const col = rgb(255, 20 + 80 * pulse, 80 + 60 * pulse);
 
-        // Базовые координаты вдоль краёв статичны — считаем один раз и переиспользуем
-        // буферы между кадрами. Раньше каждый кадр аллоцировались 4 массива по ~115
-        // объектов {x,y} (~460 объектов/кадр → постоянный GC-мусор на 144/240 Гц).
         if (!this._wallAxisX || this._wallStep !== step) {
             this._wallStep = step;
             const xs = []; for (let x = 0; x <= W; x += step) xs.push(x);
             const ys = []; for (let y = 0; y <= H; y += step) ys.push(y);
             this._wallAxisX = xs; this._wallAxisY = ys;
-            this._wallTop = new Float64Array(xs.length);   // осциллирующая y верх/низ
+            this._wallTop = new Float64Array(xs.length);
             this._wallBot = new Float64Array(xs.length);
-            this._wallLeft = new Float64Array(ys.length);  // осциллирующая x лево/право
+            this._wallLeft = new Float64Array(ys.length);
             this._wallRight = new Float64Array(ys.length);
         }
         const xs = this._wallAxisX, ys = this._wallAxisY;
@@ -40,40 +30,34 @@ MainScene.prototype._drawSoundWaveWalls = function(g) {
             left[i] = 6 + A * (1 + Math.sin(k * y + tm * speed));
             right[i] = W - 6 - A * (1 + Math.sin(k * y - tm * speed));
         }
-        // Горизонтальные края (верх/низ): x = xs[i], y = буфер[i].
         const strokeH = (yb, width, alpha) => {
             g.lineStyle(width, col, alpha);
             g.beginPath(); g.moveTo(xs[0], yb[0]);
             for (let i = 1; i < xs.length; i++) g.lineTo(xs[i], yb[i]);
             g.strokePath();
         };
-        // Вертикальные края (лево/право): x = буфер[i], y = ys[i].
         const strokeV = (xb, width, alpha) => {
             g.lineStyle(width, col, alpha);
             g.beginPath(); g.moveTo(xb[0], ys[0]);
             for (let i = 1; i < ys.length; i++) g.lineTo(xb[i], ys[i]);
             g.strokePath();
         };
-        // По два прохода на край: мягкое свечение (12px) + яркое ядро (4px).
         strokeH(top, 12, 0.16); strokeH(top, 4, 0.9);
         strokeH(bot, 12, 0.16); strokeH(bot, 4, 0.9);
         strokeV(left, 12, 0.16); strokeV(left, 4, 0.9);
         strokeV(right, 12, 0.16); strokeV(right, 4, 0.9);
     };
 
-// Телеграфы/эффекты появления (читаются из e.spawning/e.spawnTimer/e.spawnStyle).
-// Рисуются в worldFx (под спрайтами врагов), поэтому ложатся «на землю».
 MainScene.prototype._drawSpawnFx = function(g) {
         const tm = this.globalTime;
         for (const e of this.enemies) {
             if (!e.spawning) continue;
             const dur = e.spawnDuration || 0.45;
             const k = clamp(e.spawnTimer / dur, 0, 1);
-            const x = (e._spawnGX != null) ? e._spawnGX : e.sprite.x; // точка появления («земля»)
+            const x = (e._spawnGX != null) ? e._spawnGX : e.sprite.x;
             const y = (e._spawnGY != null) ? e._spawnGY : e.sprite.y;
 
             if (e.spawnStyle === 'boss1') {
-                // Тень растёт по мере падения → кольцо-удар при приземлении.
                 const land = 0.85;
                 if (k < land) {
                     const t = k / land, r = 50 + 150 * t, p = 0.5 + 0.5 * Math.sin(tm * 14);
@@ -85,7 +69,6 @@ MainScene.prototype._drawSpawnFx = function(g) {
                     g.lineStyle(5, rgb(255, 220, 90), (1 - t)); g.strokeCircle(x, y, 100 + 360 * t);
                 }
             } else if (e.spawnStyle === 'boss2') {
-                // Эхо-следы позади летящего босса → соник-бум на месте прибытия.
                 const arrive = 0.7;
                 if (k < arrive) {
                     const cx = e.sprite.x, cy = e.sprite.y, dx = e._spawnDX || 0, dy = e._spawnDY || 0;
@@ -98,7 +81,6 @@ MainScene.prototype._drawSpawnFx = function(g) {
                     g.lineStyle(9, rgb(255, 40, 160), (1 - t) * 0.85); g.strokeCircle(x, y, 90 + 380 * t);
                 }
             } else if (e.spawnStyle === 'boss3') {
-                // Сходящиеся к точке лучи + строб-ядро (неон).
                 const flick = (Math.random() < 0.5) ? 1 : 0.35, beams = 7;
                 for (let i = 0; i < beams; i++) {
                     const ang = i * (Math.PI * 2 / beams) + tm * 0.6, far = 1500 * (1 - k);
@@ -108,7 +90,6 @@ MainScene.prototype._drawSpawnFx = function(g) {
                 }
                 g.fillStyle(rgb(180, 240, 255), (0.1 + 0.3 * flick) * k); g.fillCircle(x, y, 30 + 90 * k);
             } else if (e.spawnStyle === 'bossdoc') {
-                // Расходящиеся зелёные кольца + пульсирующий крест-глиф.
                 const fade = Math.min(1, k * 2);
                 for (let i = 0; i < 3; i++) {
                     const rr = (tm * 0.6 + i / 3) % 1;
@@ -118,7 +99,6 @@ MainScene.prototype._drawSpawnFx = function(g) {
                 g.lineStyle(8, rgb(120, 255, 170), 0.5 * fade);
                 g.beginPath(); g.moveTo(x - cs, y); g.lineTo(x + cs, y); g.moveTo(x, y - cs); g.lineTo(x, y + cs); g.strokePath();
             } else {
-                // Обычный враг: стягивающееся красно-оранжевое кольцо-предупреждение.
                 const pulse = 0.5 + 0.5 * Math.sin(tm * 18);
                 const r = 75 * (1 - 0.45 * k), a = (0.35 + 0.4 * pulse) * (1 - 0.3 * k);
                 g.lineStyle(5, rgb(255, 60 + 120 * pulse, 0), a); g.strokeCircle(x, y, r);
@@ -127,15 +107,11 @@ MainScene.prototype._drawSpawnFx = function(g) {
         }
     };
 
-    // ===================== РЕНДЕР МИРА (FX) =====================
 MainScene.prototype.drawWorldFx = function() {
         const g = this.worldFx;
         g.clear();
-        this._drawSoundWaveWalls(g); // стены-границы в виде звуковых волн
-        this._drawSpawnFx(g);        // телеграфы/эффекты появления врагов и боссов
-        // Трейлы пуль (PlayState.cpp: круги радиусом 8*ratio, alpha 180*ratio).
-        // Читаем кольцевой буфер: логический индекс i (0 = старейшая точка) → физический
-        // (start + i) % cap. Старые точки — тусклее/мельче, свежие — ярче/крупнее.
+        this._drawSoundWaveWalls(g);
+        this._drawSpawnFx(g);
         for (const b of this.bullets) {
             const n = b.trailCount;
             if (n <= 0) continue;
@@ -148,8 +124,6 @@ MainScene.prototype.drawWorldFx = function() {
                 g.fillCircle(tx[p], ty[p], 8 * ratio);
             }
         }
-        // Кольцо-ударная волна (УДАР ОЗЕМЬ / ЗВУКОВАЯ ВОЛНА). Цвет/радиус задаются при активации;
-        // фолбэк — оранжевый слэм.
         if (this.slamRingTimer >= 0) {
             const t = this.slamRingTimer / C.SLAM_RING_DURATION;
             const r = (this.slamRingRadius || C.SLAM_RADIUS) * t;
@@ -159,7 +133,6 @@ MainScene.prototype.drawWorldFx = function() {
             g.lineStyle(3, this.slamRingColor2 || rgb(255, 220, 80), alpha);
             g.strokeCircle(this.slamRingCenter.x, this.slamRingCenter.y, r);
         }
-        // Звуковые волны Сабвуфера: сектор 90° + дуга-фронт (циан).
         for (const w of this.soundWaves) {
             const ta = clamp(w.timer / (C.SUBWOOFER.WAVE_EXPAND + 0.15), 0, 1);
             const alpha = 1 - ta;
@@ -171,7 +144,6 @@ MainScene.prototype.drawWorldFx = function() {
             g.lineStyle(4, rgb(180, 245, 255), 0.85 * alpha);
             g.beginPath(); g.arc(w.x, w.y, Math.max(0, w.radius - 8), a0, a1, false); g.strokePath();
         }
-        // Аура Хайпмена: пульсирующее зелёное кольцо (зона лечения союзников).
         for (const e of this.enemies) {
             if (e.type !== EnemyType.HYPEMAN || e.hp <= 0) continue;
             const pulse = (Math.sin(this.globalTime * 3) + 1) / 2;
@@ -181,7 +153,6 @@ MainScene.prototype.drawWorldFx = function() {
             g.lineStyle(3, rgb(80, 255, 150), 0.4 + 0.25 * pulse);
             g.strokeCircle(e.sprite.x, e.sprite.y, rr);
         }
-        // Босс-доктор: его аура лечения (зелёная, шире) + маркер броска стана на замахе.
         for (const e of this.enemies) {
             if (!e.isBossDoc || e.hp <= 0) continue;
             const pulse = (Math.sin(this.globalTime * 3) + 1) / 2;
@@ -198,7 +169,6 @@ MainScene.prototype.drawWorldFx = function() {
                 g.strokeCircle(tp.x, tp.y, 16);
             }
         }
-        // Стан игрока: вращающееся кольцо «звёздочек» над головой.
         if (this.player && this.player.stunTimer > 0) {
             const ps = this.player.sprite, cx = ps.x, cy = ps.y - 70;
             for (let i = 0; i < 3; i++) {
@@ -207,7 +177,6 @@ MainScene.prototype.drawWorldFx = function() {
                 g.fillCircle(cx + Math.cos(a) * 26, cy + Math.sin(a) * 10, 6);
             }
         }
-        // Лазер игрока (способность LASER): затухающий пробивающий луч
         if (this.playerBeam) {
             const pb = this.playerBeam;
             const a = clamp(pb.timer / 0.28, 0, 1);
@@ -219,7 +188,6 @@ MainScene.prototype.drawWorldFx = function() {
             g.lineStyle(10, rgb(255, 255, 255), 0.95 * a);
             g.beginPath(); g.moveTo(pb.x, pb.y); g.lineTo(ex, ey); g.strokePath();
         }
-        // Лазер STROBE: тонкий телеграф-прицел, затем толстый светящийся луч
         for (const e of this.enemies) {
             if (!e.isBoss3) continue;
             const bx = e.sprite.x, by = e.sprite.y;
@@ -233,38 +201,32 @@ MainScene.prototype.drawWorldFx = function() {
             if (e.beamActive) {
                 const ex = bx + Math.cos(e.beamAngle) * e.beamLen;
                 const ey = by + Math.sin(e.beamAngle) * e.beamLen;
-                g.lineStyle(e.beamWidth, rgb(0, 220, 255), 0.28);   // широкое свечение
+                g.lineStyle(e.beamWidth, rgb(0, 220, 255), 0.28);
                 g.beginPath(); g.moveTo(bx, by); g.lineTo(ex, ey); g.strokePath();
                 g.lineStyle(e.beamWidth * 0.5, rgb(150, 245, 255), 0.55);
                 g.beginPath(); g.moveTo(bx, by); g.lineTo(ex, ey); g.strokePath();
-                g.lineStyle(8, rgb(255, 255, 255), 0.95);           // яркое ядро
+                g.lineStyle(8, rgb(255, 255, 255), 0.95);
                 g.beginPath(); g.moveTo(bx, by); g.lineTo(ex, ey); g.strokePath();
             }
         }
-        // Портал безумного этапа: неоновая воронка из вращающихся колец.
         if (this.crazyMode && this.portal) this._drawPortal(g);
     };
 
-    // Неоновый портал-воронка (синтвейв STROBE): пульсирующее свечение + концентрические
-    // вращающиеся кольца + яркое ядро. Цвета совпадают с боссом-СТРОБОМ (cyan/magenta).
 MainScene.prototype._drawPortal = function(g) {
         const px = this.portal.x, py = this.portal.y, T = this.globalTime;
         const R = C.PORTAL_RADIUS;
         const pulse = 0.5 + 0.5 * Math.sin(T * 4);
-        // Неоновый ореол под спрайтом (или сам портал, если ассета нет)
         g.fillStyle(rgb(0, 230, 255), 0.12 + 0.07 * pulse);
         g.fillCircle(px, py, R * 1.7);
         g.fillStyle(rgb(200, 0, 255), 0.12 + 0.07 * pulse);
         g.fillCircle(px, py, R * 1.25);
 
         if (this.portalSprite) {
-            // Анимация спрайта: медленное вращение против часовой стрелки + пульсация масштаба.
             this.portalSprite.rotation = -T * 0.5;
             this.portalSprite.setScale(this._portalBaseScale * (1 + 0.06 * pulse));
             return;
         }
 
-        // Фолбэк без ассета: векторная воронка.
         for (let i = 0; i < 4; i++) {
             const rr = R * (0.45 + i * 0.18) + Math.sin(T * 3 + i) * 6;
             const col = (i % 2 === 0) ? rgb(0, 230, 255) : rgb(200, 0, 255);
@@ -284,13 +246,10 @@ MainScene.prototype._drawPortal = function(g) {
         g.fillCircle(px, py, R * 0.16 + 4 * pulse);
     };
 
-    // Стрелка-индикатор направления на босса, когда он за пределами видимой области.
-    // Прижата к краю экрана (на отступе margin) в стороне босса, цвет — по типу босса.
 MainScene.prototype._drawBossArrow = function() {
         const g = this.bossArrowFx;
         g.clear();
         if (this.isGameOver) return;
-        // Цель указателя: босс, а в безумном этапе — портал-выход.
         let tx, ty, col;
         if (this.crazyMode && this.portal) {
             tx = this.portal.x; ty = this.portal.y; col = rgb(0, 230, 255);
@@ -304,13 +263,12 @@ MainScene.prototype._drawBossArrow = function() {
 
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT, margin = 70;
         const view = this.cameras.main.worldView;
-        const sx = tx - view.x, sy = ty - view.y; // позиция цели в координатах экрана
-        if (sx >= margin && sx <= W - margin && sy >= margin && sy <= H - margin) return; // цель на экране — стрелка не нужна
+        const sx = tx - view.x, sy = ty - view.y;
+        if (sx >= margin && sx <= W - margin && sy >= margin && sy <= H - margin) return;
 
         const cx = W / 2, cy = H / 2;
         const ang = Math.atan2(sy - cy, sx - cx);
         const cos = Math.cos(ang), sin = Math.sin(ang);
-        // точка на прямоугольнике-рамке (экран минус margin) в направлении босса
         const hw = W / 2 - margin, hh = H / 2 - margin;
         let scale = Infinity;
         if (Math.abs(cos) > 1e-6) scale = Math.min(scale, hw / Math.abs(cos));
@@ -320,7 +278,6 @@ MainScene.prototype._drawBossArrow = function() {
         const pulse = 0.6 + 0.4 * Math.sin(this.globalTime * 8);
         const size = 24 * (0.92 + 0.12 * Math.sin(this.globalTime * 8));
 
-        // треугольник: остриё в сторону босса (наружу), основание — позади
         const perp = ang + Math.PI / 2;
         const tip = { x: ax + cos * size, y: ay + sin * size };
         const bcx = ax - cos * size * 0.5, bcy = ay - sin * size * 0.5;
@@ -329,7 +286,7 @@ MainScene.prototype._drawBossArrow = function() {
         const b2 = { x: bcx - Math.cos(perp) * halfW, y: bcy - Math.sin(perp) * halfW };
 
         g.fillStyle(col, 0.25 * pulse);
-        g.fillCircle(ax, ay, size * 1.6); // свечение
+        g.fillCircle(ax, ay, size * 1.6);
         g.fillStyle(col, 0.95);
         g.beginPath(); g.moveTo(tip.x, tip.y); g.lineTo(b1.x, b1.y); g.lineTo(b2.x, b2.y); g.closePath(); g.fillPath();
         g.lineStyle(2, 0xffffff, 0.85 * pulse);

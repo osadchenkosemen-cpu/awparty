@@ -1,31 +1,21 @@
-// i18n — локализация интерфейса (English / Русский).
-// Глобальная функция t(key) возвращает строку (или массив) для текущего языка
-// с откатом на английский, затем на сам ключ. Язык хранится в save.language.
-//
-// ВАЖНО: шрифт Orbitron не содержит кириллицы — русские глифы рисуются запасным
-// Arial (см. FONT = 'Orbitron, Arial'). Это нормально, просто стиль отличается.
 
 const I18N = {
     en: {
-        // --- Главное меню ---
         menu_play: 'Play',
         menu_records: 'Records',
         menu_settings: 'Settings',
 
-        // --- Хаб ---
         lobby_hub: 'HUB',
         lobby_start: 'START RUN',
         lobby_shop: 'UPGRADES & SHOP',
         lobby_back: 'Back to Menu',
 
-        // --- Выбор главы ---
         chapter_select_title: 'SELECT CHAPTER',
         chapter_label: 'CHAPTER',
         chapter_play: 'PLAY',
         chapter_locked: 'SOON',
         chapter_hint_back: 'Esc — back to hub',
 
-        // --- Настройки ---
         set_title: 'SETTINGS',
         set_grp_game: 'GAMEPLAY',
         set_grp_audio: 'AUDIO',
@@ -49,7 +39,6 @@ const I18N = {
         cheat_gave: 'Gave 500 coins',
         cheat_noname: 'No player name yet — set one by scoring first',
 
-        // --- Таблица рекордов ---
         lb_title: 'RECORDS',
         lb_hardcore: 'HARDCORE',
         lb_normal: 'NORMAL',
@@ -66,17 +55,14 @@ const I18N = {
         lb_hint_sort: 'TAB / click  -  Sort (time / score)',
         lb_hint_back: '[ ESC / ENTER  -  Back ]',
 
-        // --- Пауза ---
         pause_title: 'PAUSED',
         pause_resume: 'Resume',
         pause_restart: 'Restart',
         pause_quit: 'Quit to Hub',
 
-        // --- Конец игры ---
         gameover: "GAME OVER\nPress 'R' to Restart\nPress 'Q' for Hub",
         gameover_records: 'L  -  View Records',
 
-        // --- Ввод имени (новый рекорд) ---
         name_new_record: 'NEW RECORD!',
         name_score: 'Score:',
         name_time: 'Time:',
@@ -85,7 +71,6 @@ const I18N = {
         err_enter_name: 'Enter a name',
         err_name_taken: 'Name is taken',
 
-        // --- Смена имени ---
         rename_title: 'RENAME PLAYER',
         rename_current: 'Current name:',
         rename_new: 'New name:',
@@ -94,7 +79,6 @@ const I18N = {
         rename_hint: 'ENTER  -  Confirm        ESC  -  Cancel',
         err_server: 'Server error, try again',
 
-        // --- Повышение уровня / способности ---
         levelup: 'LEVEL UP!',
         ability_choose: 'CHOOSE AN ABILITY',
         cooldown: 'Cooldown',
@@ -106,10 +90,8 @@ const I18N = {
         ability_desc_5: 'Emit a sonic wave that\nknocks back and damages\nall nearby enemies.',
         ability_desc_6: 'Hurl a charge that bursts\ninto 14 shards flying\nin all directions.',
 
-        // --- Тосты апгрейдов над игроком ---
         upgrade_toasts: ['UPGRADE: Fire Rate +', 'UPGRADE: Damage +', 'UPGRADE: Speed +', 'UPGRADE: Magnet +', 'UPGRADE: Max HP +1', 'UNLOCKED: Blademail', 'UNLOCKED: Pierce Shot'],
 
-        // --- Апгрейды (карточки level up) ---
         upgrade_titles: ['FAST TRIGGER', 'BRUTE FORCE', 'RUNNER', 'MAGNETISM', 'HEALTH UP', 'BLADEMAIL', 'PIERCE SHOT'],
         upgrade_descs: [
             'Increases firing\nspeed.',
@@ -121,13 +103,10 @@ const I18N = {
             'Bullets pierce 1 enemy,\n-50% dmg to the next.',
         ],
 
-        // --- Бейдж легендарной карточки ---
         card_legendary: '★ LEGENDARY ★',
 
-        // --- Способности ---
         ability_names: ['INVINCIBILITY', 'GROUND SLAM', 'DISC STORM', 'LASER', 'SKULL', 'SONIC WAVE', 'SHATTER'],
 
-        // --- Магазин: дерево навыков ---
         shop_skilltree: 'SKILL TREE',
         shop_artifacts: 'ARTIFACTS',
         shop_coins: 'Coins',
@@ -153,7 +132,6 @@ const I18N = {
             ['Move speed +10', 'Unlock/upgrade dash', 'Pickup radius +50'],
         ],
 
-        // --- Артефакты (названия/описания; стоимость — в constants.js) ---
         artifact_names: ['BLOOD PACT', 'GLASS CANNON', 'ECHO CHAMBER', 'SOUL LEECH', 'BERSERKER', 'IRON SKIN', 'MAGNET CORE'],
         artifact_descs: [
             'Kill heals 2 HP',
@@ -165,7 +143,6 @@ const I18N = {
             'Infinite pickup range',
         ],
 
-        // --- HUD / игровой процесс ---
         hud_lvl: 'LVL',
         hud_hp: 'HP',
         boss_name: 'THE OVERSEER',
@@ -174,7 +151,6 @@ const I18N = {
         phase: 'PHASE',
         clear_all: 'CLEAR ALL ENEMIES',
 
-        // --- Пауза (статы/билд) и итоги забега ---
         pause_stats: 'STATS',
         pause_build: 'BUILD',
         stat_damage: 'Damage',
@@ -198,10 +174,8 @@ const I18N = {
         gameover_title: 'GAME OVER',
         gameover_hint: 'R  -  Restart        Q  -  Hub',
 
-        // --- Безумный этап / портал (после третьего босса) ---
         crazy_title: 'FRENZY',
         crazy_hint: 'ENEMIES ENRAGED — ESCAPE THROUGH THE PORTAL',
-        // Подсказка управления (первые ~10с забега, слева по центру)
         hint_move: 'WASD — Move',
         hint_aim: 'Mouse — Aim (auto-fire)',
         hint_dash: 'Space — Dash',
@@ -213,7 +187,6 @@ const I18N = {
         stageclear_total: 'TOTAL',
         stageclear_hub: 'GO TO HUB',
 
-        // --- Облачное восстановление прогресса ---
         set_cloud: 'Cloud Restore',
         cloud_title: 'CLOUD RESTORE',
         cloud_enter_nick: 'Enter your nick to restore progress:',
@@ -224,32 +197,27 @@ const I18N = {
         cloud_offline: 'Cloud not available',
         cloud_hint: 'ENTER  -  Restore        ESC  -  Cancel',
 
-        // --- Сброс персонажа (кнопка в настройках) ---
         set_reset: 'Reset Character',
         reset_confirm: 'Click again to reset',
         reset_done: 'Character reset (name kept)',
     },
 
     ru: {
-        // --- Главное меню ---
         menu_play: 'Играть',
         menu_records: 'Рекорды',
         menu_settings: 'Настройки',
 
-        // --- Хаб ---
         lobby_hub: 'ХАБ',
         lobby_start: 'НАЧАТЬ ЗАБЕГ',
         lobby_shop: 'УЛУЧШЕНИЯ И МАГАЗИН',
         lobby_back: 'Назад в меню',
 
-        // --- Выбор главы ---
         chapter_select_title: 'ВЫБОР ГЛАВЫ',
         chapter_label: 'ГЛАВА',
         chapter_play: 'ИГРАТЬ',
         chapter_locked: 'СКОРО',
         chapter_hint_back: 'Esc — назад в хаб',
 
-        // --- Настройки ---
         set_title: 'НАСТРОЙКИ',
         set_grp_game: 'ИГРА',
         set_grp_audio: 'ЗВУК',
@@ -273,7 +241,6 @@ const I18N = {
         cheat_gave: 'Получено 500 монет',
         cheat_noname: 'Имени пока нет — сначала установите рекорд',
 
-        // --- Таблица рекордов ---
         lb_title: 'РЕКОРДЫ',
         lb_hardcore: 'ХАРДКОР',
         lb_normal: 'ОБЫЧНЫЙ',
@@ -290,17 +257,14 @@ const I18N = {
         lb_hint_sort: 'TAB / клик  -  Сортировка (время / очки)',
         lb_hint_back: '[ ESC / ENTER  -  Назад ]',
 
-        // --- Пауза ---
         pause_title: 'ПАУЗА',
         pause_resume: 'Продолжить',
         pause_restart: 'Заново',
         pause_quit: 'Выйти в хаб',
 
-        // --- Конец игры ---
         gameover: 'ИГРА ОКОНЧЕНА\nНажми «R» — заново\nНажми «Q» — в хаб',
         gameover_records: 'L  -  Посмотреть рекорды',
 
-        // --- Ввод имени (новый рекорд) ---
         name_new_record: 'НОВЫЙ РЕКОРД!',
         name_score: 'Очки:',
         name_time: 'Время:',
@@ -309,7 +273,6 @@ const I18N = {
         err_enter_name: 'Введите имя',
         err_name_taken: 'Имя занято',
 
-        // --- Смена имени ---
         rename_title: 'СМЕНА ИМЕНИ',
         rename_current: 'Текущее имя:',
         rename_new: 'Новое имя:',
@@ -318,7 +281,6 @@ const I18N = {
         rename_hint: 'ENTER  -  Подтвердить        ESC  -  Отмена',
         err_server: 'Ошибка сервера, попробуйте снова',
 
-        // --- Повышение уровня / способности ---
         levelup: 'НОВЫЙ УРОВЕНЬ!',
         ability_choose: 'ВЫБЕРИТЕ СПОСОБНОСТЬ',
         cooldown: 'Перезарядка',
@@ -330,10 +292,8 @@ const I18N = {
         ability_desc_5: 'Звуковая волна: отбрасывает\nи бьёт всех врагов\nвокруг.',
         ability_desc_6: 'Бросает заряд, который\nвзрывается на 14 осколков\nво все стороны.',
 
-        // --- Тосты апгрейдов над игроком ---
         upgrade_toasts: ['УЛУЧШЕНИЕ: Скорострельность +', 'УЛУЧШЕНИЕ: Урон +', 'УЛУЧШЕНИЕ: Скорость +', 'УЛУЧШЕНИЕ: Магнит +', 'УЛУЧШЕНИЕ: Макс. HP +1', 'ОТКРЫТО: Блейдмейл', 'ОТКРЫТО: Прострел'],
 
-        // --- Апгрейды (карточки level up) ---
         upgrade_titles: ['БЫСТРЫЙ КУРОК', 'ГРУБАЯ СИЛА', 'БЕГУН', 'МАГНЕТИЗМ', 'ПРИБАВКА HP', 'БЛЕЙДМЕЙЛ', 'ПРОСТРЕЛ'],
         upgrade_descs: [
             'Повышает скорость\nстрельбы.',
@@ -345,13 +305,10 @@ const I18N = {
             'Пуля пробивает врага,\n-50% урона следующему.',
         ],
 
-        // --- Бейдж легендарной карточки ---
         card_legendary: '★ ЛЕГЕНДАРНАЯ ★',
 
-        // --- Способности ---
         ability_names: ['НЕУЯЗВИМОСТЬ', 'УДАР ОЗЕМЬ', 'ВИХРЬ ДИСКОВ', 'ЛАЗЕР', 'ЧЕРЕП', 'ЗВУКОВАЯ ВОЛНА', 'РАСКОЛ'],
 
-        // --- Магазин: дерево навыков ---
         shop_skilltree: 'ДЕРЕВО НАВЫКОВ',
         shop_artifacts: 'АРТЕФАКТЫ',
         shop_coins: 'Монеты',
@@ -377,7 +334,6 @@ const I18N = {
             ['Скорость +10', 'Открыть/улучшить рывок', 'Радиус подбора +50'],
         ],
 
-        // --- Артефакты ---
         artifact_names: ['КРОВАВЫЙ ПАКТ', 'СТЕКЛЯННАЯ ПУШКА', 'ЭХО-КАМЕРА', 'ПОЖИРАТЕЛЬ ДУШ', 'БЕРСЕРК', 'ЖЕЛЕЗНАЯ КОЖА', 'МАГНИТНОЕ ЯДРО'],
         artifact_descs: [
             'Убийство лечит 2 HP',
@@ -389,7 +345,6 @@ const I18N = {
             'Бесконечный радиус подбора',
         ],
 
-        // --- HUD / игровой процесс ---
         hud_lvl: 'LVL',
         hud_hp: 'HP',
         boss_name: 'НАДЗИРАТЕЛЬ',
@@ -398,7 +353,6 @@ const I18N = {
         phase: 'ЭТАП',
         clear_all: 'УНИЧТОЖЬТЕ ВСЕХ ВРАГОВ',
 
-        // --- Пауза (статы/билд) и итоги забега ---
         pause_stats: 'СТАТЫ',
         pause_build: 'БИЛД',
         stat_damage: 'Урон',
@@ -422,10 +376,8 @@ const I18N = {
         gameover_title: 'ИГРА ОКОНЧЕНА',
         gameover_hint: 'R  -  Заново        Q  -  В хаб',
 
-        // --- Безумный этап / портал (после третьего босса) ---
         crazy_title: 'БЕЗУМИЕ',
         crazy_hint: 'ВРАГИ В ЯРОСТИ — УХОДИ В ПОРТАЛ',
-        // Подсказка управления (первые ~10с забега, слева по центру)
         hint_move: 'WASD — Движение',
         hint_aim: 'Мышь — Прицел (автоогонь)',
         hint_dash: 'Пробел — Рывок',
@@ -437,7 +389,6 @@ const I18N = {
         stageclear_total: 'ИТОГО',
         stageclear_hub: 'ПЕРЕЙТИ В ХАБ',
 
-        // --- Облачное восстановление прогресса ---
         set_cloud: 'Восстановить из облака',
         cloud_title: 'ВОССТАНОВЛЕНИЕ ИЗ ОБЛАКА',
         cloud_enter_nick: 'Введите ник для восстановления прогресса:',
@@ -448,20 +399,16 @@ const I18N = {
         cloud_offline: 'Облако недоступно',
         cloud_hint: 'ENTER  -  Восстановить        ESC  -  Отмена',
 
-        // --- Сброс персонажа (кнопка в настройках) ---
         set_reset: 'Сбросить персонажа',
         reset_confirm: 'Нажми ещё раз для сброса',
         reset_done: 'Персонаж сброшен (имя сохранено)',
     },
 };
 
-// Текущий язык. Инициализируется из save в scene.create через setLanguage().
 let I18N_LANG = 'en';
 
-// Допустимый код языка ('en'|'ru'), иначе 'en'.
 function normLang(code) { return I18N[code] ? code : 'en'; }
 
-// Определить язык по браузеру при первом запуске (нет сохранённого выбора).
 function detectLang() {
     try {
         const l = (navigator.language || navigator.userLanguage || '').toLowerCase();
@@ -472,7 +419,6 @@ function detectLang() {
 
 function setLanguage(code) { I18N_LANG = normLang(code); }
 
-// Перевод по ключу. Откат: текущий язык -> en -> сам ключ.
 function t(key) {
     const cur = I18N[I18N_LANG] || I18N.en;
     let v = cur[key];

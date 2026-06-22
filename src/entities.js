@@ -1,14 +1,6 @@
-// Сущности — порт Player.h, Enemy.h, Bullet.h, EnemyProjectile.h, BossSoul.h,
-// Gem.h, Coin.h, Vinyl.h, Particle.h, DamageText.h.
-//
-// Каждая сущность владеет своим Phaser-объектом (sprite / rectangle / text),
-// созданным через scene.addWorld(...). Логика обновления повторяет C++.
 
 const DEG = 180 / Math.PI;
 
-// ----------------------------------------------------------------------------
-// Player (Player.h)
-// ----------------------------------------------------------------------------
 class Player {
     constructor(scene) {
         this.scene = scene;
@@ -32,17 +24,14 @@ class Player {
         this.baseCritChance = 0.03;
         this.critMultiplier = 2.0;
         this.armor = 0;
-        this.damageAcc = 0; // накопитель дробного урона при процентном снижении бронёй
+        this.damageAcc = 0;
 
         this.ironSkinCharges = 0;
         this.soulLeechCritBonus = 0;
 
-        // Легендарные карты забега. Выставляются в resetGame / applyUpgrade,
-        // но инициализируем здесь, чтобы поля существовали с момента создания.
-        this.bladeMail = false; // шипы: враг при контакте получает ответный урон
-        this.pierce = false;    // прострел: пуля пробивает врага насквозь
+        this.bladeMail = false;
+        this.pierce = false;
 
-        // Dash
         this.hasDashUnlocked = false;
         this.dashLevel = 0;
         this.isDashing = false;
@@ -65,7 +54,7 @@ class Player {
 
         this.isInvincible = false;
         this.invincibilityTimer = 0;
-        this.stunTimer = 0; // стан босса-доктора: блокирует движение/деш/стрельбу, пока > 0
+        this.stunTimer = 0;
 
         this.lastUpgradeId = -1;
         this.messageTimer = 0;
@@ -75,14 +64,12 @@ class Player {
         this.idleTimer = 0;
         this.baseScale = 1.0;
 
-        // 'front' | 'back' | 'left' | 'right'
         this.facing = 'front';
         this.animFrame = 0;
         this.ANIM_FPS = 8;
         this.ANIM_FRAMES = 6;
         this.currentTexKey = null;
 
-        // Спрайт + тень
         this.sprite = scene.addWorld(scene.add.sprite(1500, 1500, 'player_front'));
         this.sprite.setOrigin(0.5, 0.5);
         this.shadow = scene.addWorld(scene.add.ellipse(1500, 1500, 90, 36, 0x000000, 120 / 255));
@@ -103,11 +90,9 @@ class Player {
         return this.dashPenaltyDuration * (1.0 - t);
     }
 
-    // dir: 'front'|'back'|'left'|'right'
     applySprite(moving) {
         let texKey;
         if (moving) {
-            // ключ кадра анимации panim_<dir><n>
             texKey = 'panim_' + this.facing + (this.animFrame + 1);
             if (!this.scene.textures.exists(texKey)) texKey = 'player_' + this.facing;
         } else {
@@ -124,11 +109,8 @@ class Player {
     gainXP(amount) { this.currentXP += amount; }
 
     takeDamage(amount) {
-        // Рывок даёт неуязвимость на время анимации дэша (isDashing).
         if (this.iFrames <= 0 && !this.isDashing && !this.isInvincible) {
             if (this.ironSkinCharges > 0) { this.ironSkinCharges--; this.iFrames = 0.3; return; }
-            // Броня — процентное снижение урона (−20% за уровень). Дробный остаток копится,
-            // чтобы снижение работало против любого урона и никогда не давало бессмертия.
             const reduction = Math.min(0.9, this.armor * 0.20);
             this.damageAcc += amount * (1 - reduction);
             const dealt = Math.floor(this.damageAcc);
@@ -155,8 +137,6 @@ class Player {
 
             this.ghostSpawnTimer -= dt;
             if (this.ghostSpawnTimer <= 0) {
-                // Призрак спавнится только если игрок реально сдвинулся —
-                // иначе при упоре в стену/угол они накладываются в яркий блоб.
                 const moved = Math.abs(s.x - this.lastGhostX) + Math.abs(s.y - this.lastGhostY);
                 if (moved > 5) {
                     const g = this.scene.addWorld(this.scene.add.image(s.x, s.y, s.texture.key));
@@ -180,7 +160,7 @@ class Player {
                 this.dashPenaltyTimer = this.computeDashPenaltyDuration();
             }
         } else {
-            if (this.stunTimer <= 0) { // в стане ввод движения игнорируется
+            if (this.stunTimer <= 0) {
                 if (input.left) { mvx -= 1; this.facing = 'left'; }
                 if (input.right) { mvx += 1; this.facing = 'right'; }
                 if (input.up) { mvy -= 1; if (mvx === 0) this.facing = 'back'; }
@@ -248,8 +228,6 @@ class Player {
             }
         }
 
-        // Призраки рывка — обновление прозрачности и удаление отживших на месте,
-        // без аллокации нового массива каждый кадр (как и пулы — бережём GC).
         for (let i = this.ghosts.length - 1; i >= 0; i--) {
             const g = this.ghosts[i];
             g.lifetime -= dt;
@@ -267,7 +245,6 @@ class Player {
             }
         }
 
-        // Клэмп в арену
         const halfW = s.displayWidth / 2;
         const halfH = s.displayHeight / 2;
         if (s.x < halfW) s.x = halfW;
@@ -277,7 +254,6 @@ class Player {
 
         if (this.currentCooldown > 0) this.currentCooldown -= dt;
 
-        // Тень (базовый эллипс rx=45; масштабируем под baseScale)
         const sr = this.baseScale * 45;
         this.shadow.setScale(sr / 45, sr / 45);
         this.shadow.x = s.x;
@@ -285,17 +261,14 @@ class Player {
     }
 }
 
-// ----------------------------------------------------------------------------
-// Enemy (Enemy.h)
-// ----------------------------------------------------------------------------
 class Enemy {
     constructor(scene, x, y, texKey) {
         this.scene = scene;
-        this._id = Enemy._nextId++; // стабильный порядок для сепарации (замена &enemy > other)
+        this._id = Enemy._nextId++;
         this.speed = C.ENEMY.NORMAL.speed;
         this.hp = C.ENEMY.NORMAL.hp;
         this.maxHp = this.hp;
-        this.damage = C.ENEMY.NORMAL.damage; // урон по игроку в новой шкале (HP=100): десятки, не единицы (x2)
+        this.damage = C.ENEMY.NORMAL.damage;
         this.walkTimer = randInt(100) / 10;
 
         this.type = EnemyType.NORMAL;
@@ -311,13 +284,12 @@ class Enemy {
         this.isBossBass = false;
         this.isBossSplit = false;
 
-        // STROBE (босс 3 этапа) — собственный конечный автомат и параметры атак
-        this.strobeState = 'ROAM';   // ROAM | TELEGRAPH | EXECUTE | RECOVER
+        this.strobeState = 'ROAM';
         this.strobeTimer = 0;
-        this.strobeAttack = -1;      // 0=laser sweep, 1=strobe burst, 2=blackout
-        this.beamActive = false;     // луч активен (наносит урон, рисуется сценой)
-        this.beamTelegraph = false;  // фаза прицеливания лучом
-        this.beamAngle = 0;          // текущий угол луча
+        this.strobeAttack = -1;
+        this.beamActive = false;
+        this.beamTelegraph = false;
+        this.beamAngle = 0;
         this.beamLen = 2400;
         this.beamWidth = 80;
         this.burstCount = 0;
@@ -326,29 +298,26 @@ class Enemy {
 
         this.goblinState = GoblinState.WALKING;
         this.goblinTimer = 0;
-        this.goblinStationed = false; // гоблин-стрелок: встал на позицию (игрок его увидел) и больше не двигается
+        this.goblinStationed = false;
         this.throwTargetPos = { x: 0, y: 0 };
         this.justThrew = false;
-        this.justThrewStun = false; // босс-доктор: в этом кадре брошен стан-снаряд
+        this.justThrewStun = false;
         this.justFiredVolley = false;
         this.volleyTargetPos = { x: 0, y: 0 };
 
         this.hitFlashTimer = 0;
-        this.bladeMailCd = 0; // кулдаун ответного урона шипов (блейдмейл игрока)
+        this.bladeMailCd = 0;
 
         this.sprite = scene.addWorld(scene.add.sprite(x, y, texKey));
         this.sprite.setOrigin(0.5, 0.5);
         this._setTargetSize(C.ENEMY.BASE_SIZE);
         this.maxHp = this.hp;
 
-        // Анимация появления: юнит инертен, пока spawning (нет движения/атак/контакта —
-        // см. ранний выход в update() и гейт `if (e.spawning) continue` в сцене).
-        // Боссы переопределяют spawnStyle/spawnDuration в своих make*-методах.
         this.spawning = true;
         this.spawnTimer = 0;
         this.spawnDuration = C.SPAWN.ENEMY_DURATION;
         this.spawnStyle = 'enemy';
-        this._spawnBurst = false; // одноразовый импакт (тряска/частицы) уже сыгран
+        this._spawnBurst = false;
     }
 
     _setTargetSize(targetSize) {
@@ -385,9 +354,6 @@ class Enemy {
         this.hp = st.hp; this.maxHp = st.hp; this.speed = st.speed; this.damage = st.damage;
     }
 
-    // Сабвуфер (глава 2+): медленный «танк-колонка». Цикл MOVE → CHARGE (телеграф) →
-    // BOOM: пускает направленную звуковую волну (сектор 90°) в сторону игрока — она
-    // отбрасывает его и наносит урон (создаётся сценой по флагу justSoundWave).
     makeSubwoofer(texKey) {
         const st = C.ENEMY.SUBWOOFER;
         this.type = EnemyType.SUBWOOFER;
@@ -398,17 +364,14 @@ class Enemy {
         this.justSoundWave = false; this._waveFired = false;
     }
 
-    // Мошер (глава 2+): обычный чейзер средней живучести, но при смерти распадается
-    // на 2-3 мини-мошеров (см. handleEnemyDeaths). Движение — общий блок погони.
     makeMosher(texKey) {
         const st = C.ENEMY.MOSHER;
         this.type = EnemyType.MOSHER;
         if (texKey) { this.sprite.setTexture(texKey); this.sprite.setOrigin(0.5, 0.5); }
         this._setTargetSize(st.size);
         this.hp = st.hp; this.maxHp = st.hp; this.speed = st.speed; this.damage = st.damage;
-        this.splitOnDeath = true; // распад на splitMin..splitMax мини (число — в handleEnemyDeaths)
+        this.splitOnDeath = true;
     }
-    // Мини-мошер: мелкий, быстрый, 1 HP, НЕ делится. texKey — тот же спрайт мошера.
     makeMosherling(texKey) {
         const st = C.ENEMY.MOSHERLING;
         this.type = EnemyType.MOSHERLING;
@@ -417,11 +380,9 @@ class Enemy {
         this.sprite.setScale(this.baseScale * st.scale, this.baseScale * st.scale);
         this.hp = st.hp; this.maxHp = st.hp; this.speed = st.speed; this.damage = st.damage;
         this.splitOnDeath = false;
-        this.spawning = false; // разлетаются из убитого мошера сразу, без телеграфа/инертности
+        this.spawning = false;
     }
 
-    // Хайпмен (глава 2+): убегает от игрока, сам почти не бьёт. Ауру (+HP/реген союзникам)
-    // считает сцена (_updateHypeAuras). Движение — собственная ветка «бегство».
     makeHypeman(texKey) {
         const st = C.ENEMY.HYPEMAN;
         this.type = EnemyType.HYPEMAN;
@@ -435,9 +396,9 @@ class Enemy {
         this.isBoss = true;
         this.type = EnemyType.BOSS;
         this.hp = st.hp; this.maxHp = st.hp; this.speed = st.speed; this.damage = st.damage;
-        this.bossScale = this.baseScale * st.scale; // базовый масштаб (для анимации ходьбы/сброса)
+        this.bossScale = this.baseScale * st.scale;
         this.sprite.setScale(this.bossScale, this.bossScale);
-        this.spawnStyle = 'boss1'; this.spawnDuration = C.SPAWN.BOSS1_DURATION; // падение с неба
+        this.spawnStyle = 'boss1'; this.spawnDuration = C.SPAWN.BOSS1_DURATION;
     }
 
     makeBoss2(boss2TexKey) {
@@ -450,11 +411,9 @@ class Enemy {
         this.hp = st.hp; this.maxHp = st.hp; this.speed = st.speed; this.damage = st.damage;
         this.bossScale = this.baseScale * st.scale;
         this.sprite.setScale(this.bossScale, this.bossScale);
-        this.spawnStyle = 'boss2'; this.spawnDuration = C.SPAWN.BOSS2_DURATION; // влёт рывком
+        this.spawnStyle = 'boss2'; this.spawnDuration = C.SPAWN.BOSS2_DURATION;
     }
 
-    // STROBE — босс 3 этапа (лазерный VJ). Текстура-плейсхолдер (boss2), тонируется
-    // в неон сценой; можно заменить на отдельный спрайт позже.
     makeBoss3(texKey) {
         const st = C.BOSS.B3;
         this.isBoss = true; this.isBoss3 = true;
@@ -468,11 +427,9 @@ class Enemy {
         this.strobeState = 'ROAM';
         this.strobeTimer = 0;
         this.strobeAttack = -1;
-        this.spawnStyle = 'boss3'; this.spawnDuration = C.SPAWN.BOSS3_DURATION; // сборка из лазеров
+        this.spawnStyle = 'boss3'; this.spawnDuration = C.SPAWN.BOSS3_DURATION;
     }
 
-    // Босс-доктор (этап 1, глава 2): аура лечения (считает сцена _updateHypeAuras) +
-    // телеграфированный стан-снаряд. Движение/стан — _updateBossDoctor. hp = B3 + 50.
     makeBossDoctor(texKey) {
         const st = C.BOSS.BD;
         this.isBoss = true; this.isBossDoc = true;
@@ -485,12 +442,9 @@ class Enemy {
         this.docState = 'ROAM';
         this.docTimer = 0;
         this.throwTargetPos = { x: 0, y: 0 };
-        this.spawnStyle = 'bossdoc'; this.spawnDuration = C.SPAWN.BOSSDOC_DURATION; // зелёный свет
+        this.spawnStyle = 'bossdoc'; this.spawnDuration = C.SPAWN.BOSSDOC_DURATION;
     }
 
-    // Босс BASS (этап 2, глава 2): носорог-сабвуфер. isBoss2 — чтобы смерть обработалась
-    // как босс этапа 2 (см. handleEnemyDeaths); isBossBass — свой AI и уникальная душа.
-    // Поведение/тайминги — _updateBossBass + C.BOSSBASS.
     makeBossBass(texKey) {
         const st = C.BOSS.BB;
         this.isBoss = true; this.isBoss2 = true; this.isBossBass = true;
@@ -500,17 +454,14 @@ class Enemy {
         this.hp = st.hp; this.maxHp = st.hp; this.speed = st.speed; this.damage = st.damage;
         this.bossScale = this.baseScale * st.scale;
         this.sprite.setScale(this.bossScale, this.bossScale);
-        this.waveRadiusMult = C.BOSSBASS.WAVE_RADIUS_MULT; // волна баса крупнее обычной
+        this.waveRadiusMult = C.BOSSBASS.WAVE_RADIUS_MULT;
         this.bassState = 'CHASE';
         this.bassTimer = 0;
-        this.bassNextRush = false;            // чередование волна/разгон
+        this.bassNextRush = false;
         this.rushDir = { x: 1, y: 0 };
-        this.spawnStyle = 'boss1'; this.spawnDuration = C.SPAWN.BOSS1_DURATION; // тяжёлый вход
+        this.spawnStyle = 'boss1'; this.spawnDuration = C.SPAWN.BOSS1_DURATION;
     }
 
-    // Босс SPLIT (этап 3, глава 2): тир 0 — главный; распад порождает копии тиров 1/2 (меньше
-    // HP/урона/размера). isBoss3 — чтобы считаться боссом этапа 3; isBossSplit — свой AI/распад/душа.
-    // Логика распада и завершения этапа — в handleEnemyDeaths. Поведение — _updateBossSplit.
     makeBossSplit(texKey, tier) {
         const base = C.BOSS.BS, T = C.BOSSSPLIT.TIERS[tier] || C.BOSSSPLIT.TIERS[0];
         this.isBoss = true; this.isBoss3 = true; this.isBossSplit = true;
@@ -522,22 +473,19 @@ class Enemy {
         this.bossScale = this.baseScale * base.scale * T.scaleMult;
         this.sprite.setScale(this.bossScale, this.bossScale);
         this.splitTier = tier;
-        this.splitCount = T.splits;          // на сколько копий распадётся (0 = не делится)
+        this.splitCount = T.splits;
         this.canSplit = T.splits > 0;
-        this.chargeTimer = C.BOSSSPLIT.CHARGE_BURST; // рывок к игроку первые секунды
-        if (tier === 0) { this.spawnStyle = 'boss1'; this.spawnDuration = C.SPAWN.BOSS1_DURATION; } // тяжёлый вход
-        else { this.spawning = false; } // копии появляются мгновенно из родителя
+        this.chargeTimer = C.BOSSSPLIT.CHARGE_BURST;
+        if (tier === 0) { this.spawnStyle = 'boss1'; this.spawnDuration = C.SPAWN.BOSS1_DURATION; }
+        else { this.spawning = false; }
     }
 
-    // Конечный автомат STROBE: ROAM -> TELEGRAPH -> EXECUTE -> RECOVER, по кругу.
-    // Атаки чередуются: 0 = вращающийся лазер, 1 = стробо-веер, 2 = затемнение+телепорт.
-    // В ярости (HP<=50%) все фазы быстрее, веер даёт лишнее кольцо.
     _updateStrobe(dt, px, py) {
         const s = this.sprite;
         this.justFiredVolley = false;
         this.justThrew = false;
         const enraged = this.hp <= this.maxHp / 2;
-        const tf = enraged ? 0.7 : 1.0; // ускорение таймеров в ярости
+        const tf = enraged ? 0.7 : 1.0;
 
         const bs = this.bossScale || this.baseScale * 3.2;
         if (this.strobeState === 'ROAM') {
@@ -545,7 +493,6 @@ class Enemy {
             s.x += dir.x * this.speed * dt;
             s.y += dir.y * this.speed * dt;
             this.walkTimer += dt * 8;
-            // Анимация передвижения: «шаг» (squash-stretch) + лёгкое покачивание.
             const bob = Math.sin(this.walkTimer) * 0.05;
             s.setScale(bs * (1 - bob * 0.4), bs * (1 + bob));
             s.angle = Math.sin(this.walkTimer * 0.6) * 6;
@@ -554,19 +501,17 @@ class Enemy {
                 this.strobeAttack = (this.strobeAttack + 1) % 3;
                 this.strobeTimer = 0;
                 this.strobeState = 'TELEGRAPH';
-                this.beamAngle = Math.atan2(py - s.y, px - s.x); // аимбот: точный прицел в игрока (фиксируется)
+                this.beamAngle = Math.atan2(py - s.y, px - s.x);
                 this.beamActive = false;
                 this.beamTelegraph = (this.strobeAttack === 0);
                 this.burstCount = 0;
                 this.burstTimer = 0;
                 this._teleported = false;
                 s.setScale(bs, bs);
-                s.angle = (this.strobeAttack === 0) ? this.beamAngle * DEG : 0; // лазер: корпус наведён на цель и замирает
+                s.angle = (this.strobeAttack === 0) ? this.beamAngle * DEG : 0;
             }
         } else if (this.strobeState === 'TELEGRAPH') {
             this.strobeTimer += dt;
-            // Лазер: прицел в игрока уже зафиксирован (аимбот), босс ЗАМИРАЕТ на 0.2с —
-            // прицел и корпус неподвижны, затем выстрел. Никакого вращения.
             const telDur = (this.strobeAttack === 0 ? 0.5 : this.strobeAttack === 1 ? 0.5 : 0.4) * tf;
             if (this.strobeTimer >= telDur) {
                 this.strobeTimer = 0;
@@ -575,7 +520,7 @@ class Enemy {
                     this.beamTelegraph = false;
                     this.beamActive = true;
                 } else if (this.strobeAttack === 1) {
-                    this.burstTimer = 1.0; // чтобы первое кольцо вылетело сразу
+                    this.burstTimer = 1.0;
                 } else if (this.strobeAttack === 2) {
                     this._teleported = false;
                 }
@@ -583,13 +528,12 @@ class Enemy {
         } else if (this.strobeState === 'EXECUTE') {
             this.strobeTimer += dt;
             if (this.strobeAttack === 0) {
-                // Прямой луч в зафиксированную точку — без свипа и вращения, держится коротко.
                 const dur = 0.4 * tf;
                 if (this.strobeTimer >= dur) {
                     this.beamActive = false;
                     this.strobeState = 'RECOVER';
                     this.strobeTimer = 0;
-                    s.angle = 0; // вернуть корпус ровно перед восстановлением
+                    s.angle = 0;
                 }
             } else if (this.strobeAttack === 1) {
                 const rings = enraged ? 3 : 2;
@@ -605,11 +549,10 @@ class Enemy {
                     this.strobeTimer = 0;
                 }
             } else if (this.strobeAttack === 2) {
-                const normal = this.bossScale; // = baseScale * C.BOSS.B3.scale (масштаб «обычной» формы)
+                const normal = this.bossScale;
                 const shrinkDur = 0.4 * tf;
                 const expandDur = 0.35 * tf;
                 if (!this._teleported) {
-                    // встаёт (раздувается) -> сжимается в точку, закручиваясь
                     const k = clamp(this.strobeTimer / shrinkDur, 0, 1);
                     const sc = (k < 0.25)
                         ? normal * (1 + 0.15 * (k / 0.25))
@@ -623,16 +566,14 @@ class Enemy {
                         this._teleported = true;
                         this.strobeTimer = 0;
                         this.burstCount = 0;
-                        this.burstTimer = 1.0; // первый залп сразу после раскрытия
+                        this.burstTimer = 1.0;
                     }
                 } else if (this.strobeTimer < expandDur) {
-                    // раскрывается обратно в обычную форму
                     const k = clamp(this.strobeTimer / expandDur, 0, 1);
                     const sc = normal * (0.1 + 0.9 * k);
                     s.setScale(sc, sc);
                     s.angle = (1 - k) * 360;
                 } else {
-                    // обычная форма + 2 залпа дисков
                     s.setScale(normal, normal);
                     s.angle = 0;
                     this.burstTimer += dt;
@@ -654,15 +595,12 @@ class Enemy {
         }
     }
 
-    // Конечный автомат босса-доктора: кайтит игрока к краю своей ауры (держит союзников
-    // в зоне лечения), вплотную — отступает; раз в STUN_INTERVAL кидает стан-снаряд с замахом.
     _updateBossDoctor(dt, px, py, arenaW, arenaH) {
         const s = this.sprite;
         this.justThrewStun = false;
         const D = C.BOSSDOC;
         const bs = this.bossScale || this.baseScale * 3.2;
 
-        // Движение: далеко (> STANDOFF) — подходит; вплотную (< FLEE_DIST) — отступает.
         const dx = s.x - px, dy = s.y - py;
         const d = Math.sqrt(dx * dx + dy * dy) || 1;
         if (d < D.FLEE_DIST) {
@@ -672,39 +610,34 @@ class Enemy {
             s.x = clamp(s.x - (dx / d) * this.speed * dt, 0, arenaW);
             s.y = clamp(s.y - (dy / d) * this.speed * dt, 0, arenaH);
         }
-        // Покачивание «в такт»; на телеграфе — лёгкий «замах» (раздувание).
         this.walkTimer += dt * 6;
         const charge = (this.docState === 'TELEGRAPH') ? 0.12 : 0;
         s.setScale(bs * (1 + charge), bs * (1 + charge));
         s.angle = Math.sin(this.walkTimer) * 4;
 
-        // Стан-бросок: ROAM (отсчёт) -> TELEGRAPH (замах, цель зафиксирована) -> бросок.
         this.docTimer += dt;
         if (this.docState === 'ROAM') {
             if (this.docTimer >= D.STUN_INTERVAL) {
                 this.docState = 'TELEGRAPH';
                 this.docTimer = 0;
-                this.throwTargetPos = { x: px, y: py }; // зафиксировать точку броска
+                this.throwTargetPos = { x: px, y: py };
             }
         } else if (this.docState === 'TELEGRAPH') {
             if (this.docTimer >= D.TELEGRAPH) {
                 this.docState = 'ROAM';
                 this.docTimer = 0;
-                this.justThrewStun = true; // сцена заспавнит стан-снаряд в throwTargetPos
+                this.justThrewStun = true;
             }
         }
     }
 
-    // Босс BASS: погоня (контактный урон даёт сцена) → волна баса вблизи / «носорожий»
-    // разгон по прямой (атаки чередуются) → восстановление. Волну создаёт сцена по
-    // justSoundWave (× waveRadiusMult). При ударе в стену разгон обрывается с тряской.
     _updateBossBass(dt, px, py, arenaW, arenaH) {
         const s = this.sprite;
         this.justSoundWave = false;
         this.justFiredVolley = false;
         const bs = this.bossScale || this.baseScale * 3.2;
         const BB = C.BOSSBASS;
-        const tf = (this.hp <= this.maxHp / 2) ? 0.7 : 1.0; // в ярости тайминги быстрее
+        const tf = (this.hp <= this.maxHp / 2) ? 0.7 : 1.0;
 
         if (this.bassState === 'CHASE') {
             const dir = normalize(px - s.x, py - s.y);
@@ -725,7 +658,7 @@ class Enemy {
                     this.bassState = 'RUSH_WINDUP';
                     this.rushDir = normalize(px - s.x, py - s.y);
                 }
-                this.bassNextRush = !this.bassNextRush; // чередуем волну/разгон
+                this.bassNextRush = !this.bassNextRush;
             }
         } else if (this.bassState === 'WAVE_CHARGE') {
             this.bassTimer += dt;
@@ -734,39 +667,37 @@ class Enemy {
             s.setScale(bs * pulse, bs * pulse);
             s.angle = Math.sin(this.bassTimer * 45) * 4;
             if (this.bassTimer >= BB.WAVE_TELEGRAPH * tf) {
-                this.justSoundWave = true; // сцена создаст волну к игроку
+                this.justSoundWave = true;
                 this.bassState = 'RECOVER'; this.bassTimer = 0; s.angle = 0; s.setScale(bs, bs);
             }
         } else if (this.bassState === 'RUSH_WINDUP') {
             this.bassTimer += dt;
-            s.angle = Math.sin(this.bassTimer * 50) * 6; // дрожь замаха
+            s.angle = Math.sin(this.bassTimer * 50) * 6;
             s.setScale(bs * 1.05, bs * 0.95);
             if (this.bassTimer >= BB.RUSH_WINDUP * tf) { this.bassState = 'RUSH'; this.bassTimer = 0; s.angle = 0; }
         } else if (this.bassState === 'RUSH') {
             this.bassTimer += dt;
             const accel = clamp(this.bassTimer / (BB.RUSH_DURATION * tf), 0, 1);
-            const spd = BB.RUSH_SPEED * (0.4 + 0.6 * accel); // разгон с ускорением
+            const spd = BB.RUSH_SPEED * (0.4 + 0.6 * accel);
             const m = 80;
             const nx = s.x + this.rushDir.x * spd * dt, ny = s.y + this.rushDir.y * spd * dt;
             const hitWall = (nx < m || nx > arenaW - m || ny < m || ny > arenaH - m);
             s.x = clamp(nx, m, arenaW - m);
             s.y = clamp(ny, m, arenaH - m);
-            s.setScale(bs * 1.1, bs * 0.92); // вытянут вперёд
+            s.setScale(bs * 1.1, bs * 0.92);
             if (hitWall || this.bassTimer >= BB.RUSH_DURATION * tf) {
                 if (hitWall) this.scene.triggerShake(0.3, 26);
                 this.bassState = 'RECOVER';
-                this.bassTimer = hitWall ? -0.4 : 0; // удар в стену → дольше оглушён
+                this.bassTimer = hitWall ? -0.4 : 0;
                 s.setScale(bs, bs);
             }
-        } else { // RECOVER
+        } else {
             this.bassTimer += dt;
             s.setScale(bs, bs); s.angle = 0;
             if (this.bassTimer >= BB.RECOVER * tf) { this.bassState = 'CHASE'; this.bassTimer = 0; }
         }
     }
 
-    // Босс SPLIT: быстрый чейзер (берёт числом), после спавна короткий рывок к игроку;
-    // расталкивает обычных мобов на пути. Контактный урон даёт сцена. Распад — в handleEnemyDeaths.
     _updateBossSplit(dt, px, py, arenaW, arenaH) {
         const s = this.sprite, SPL = C.BOSSSPLIT;
         if (this.chargeTimer > 0) this.chargeTimer -= dt;
@@ -778,7 +709,6 @@ class Enemy {
         const bob = Math.sin(this.walkTimer * 1.8) * 0.07;
         s.setScale(this.bossScale * (1 - bob * 0.4), this.bossScale * (1 + bob));
         s.angle = Math.sin(this.walkTimer) * 5;
-        // Расталкивание обычных мобов на пути (линию босса и спавнящихся не трогаем).
         const R = SPL.SHOVE_RADIUS, F = SPL.SHOVE_FORCE;
         for (const o of this.scene.enemies) {
             if (o === this || o.isBoss || o.hp <= 0 || o.spawning) continue;
@@ -791,17 +721,14 @@ class Enemy {
         }
     }
 
-    // Анимация появления (инертная фаза). На первом тике запоминаем целевой масштаб/позицию
-    // (их уже выставил конструктор/make*), затем гоняем прогресс k∈[0..1] по spawnStyle.
-    // Сами телеграфы/кольца/лучи рисует сцена в _drawSpawnFx по этому же состоянию.
     _updateSpawn(dt) {
         const s = this.sprite;
         if (this._spawnInit === undefined) {
             this._spawnInit = true;
-            this._spawnSX = s.scaleX; this._spawnSY = s.scaleY; // целевой масштаб (после make*)
-            this._spawnGX = s.x; this._spawnGY = s.y;           // целевая («земля») позиция
+            this._spawnSX = s.scaleX; this._spawnSY = s.scaleY;
+            this._spawnGX = s.x; this._spawnGY = s.y;
             if (this.spawnStyle === 'boss2') {
-                const a = Math.random() * Math.PI * 2; // направление влёта дашера
+                const a = Math.random() * Math.PI * 2;
                 this._spawnDX = Math.cos(a); this._spawnDY = Math.sin(a);
             }
             s.setAlpha(0);
@@ -813,7 +740,6 @@ class Enemy {
 
         switch (this.spawnStyle) {
             case 'boss1': {
-                // Падение с неба → удар (тень растёт в _drawSpawnFx).
                 const land = 0.85;
                 if (k < 0.35) { s.setAlpha(0); s.setScale(sx, sy); s.setPosition(gx, gy - 800); }
                 else if (k < land) {
@@ -821,7 +747,7 @@ class Enemy {
                     s.setAlpha(1); s.angle = 0; s.setScale(sx * sc, sy * sc);
                     s.setPosition(gx, (gy - 800) + 800 * fe);
                 } else {
-                    const t = (k - land) / (1 - land); // squash-восстановление при ударе
+                    const t = (k - land) / (1 - land);
                     s.setAlpha(1); s.setPosition(gx, gy);
                     s.setScale(sx * (1.15 - 0.15 * t), sy * (0.8 + 0.2 * t));
                 }
@@ -833,10 +759,9 @@ class Enemy {
                 break;
             }
             case 'boss2': {
-                // Влёт рывком со «смазом» вдоль движения → соник-бум.
                 const arrive = 0.7, dx = this._spawnDX, dy = this._spawnDY;
                 if (k < arrive) {
-                    const f = k / arrive, fe = 1 - (1 - f) * (1 - f); // декселерация
+                    const f = k / arrive, fe = 1 - (1 - f) * (1 - f);
                     const dist = 1200 * (1 - fe), stretch = 1 + 1.2 * (1 - fe);
                     s.setPosition(gx - dx * dist, gy - dy * dist);
                     s.setAlpha(clamp(f * 2, 0, 1));
@@ -855,7 +780,6 @@ class Enemy {
                 break;
             }
             case 'boss3': {
-                // Строб-проявление в неоне (мигание нарастает к 1; лучи — в _drawSpawnFx).
                 const flick = Math.random() < 0.5 ? 0.35 : 1, sc = 0.6 + 0.4 * k;
                 s.setPosition(gx, gy); s.angle = 0;
                 s.setAlpha(k < 0.85 ? flick * Math.min(1, k * 1.5) : 1);
@@ -868,7 +792,6 @@ class Enemy {
                 break;
             }
             case 'bossdoc': {
-                // Мягкое проявление в зелёном свете (кольца/крест — в _drawSpawnFx).
                 const m = clamp((k - 0.4) / 0.6, 0, 1), sc = 0.6 + 0.4 * m;
                 s.setPosition(gx, gy); s.angle = 0;
                 s.setAlpha(m); s.setScale(sx * sc, sy * sc);
@@ -879,8 +802,6 @@ class Enemy {
                 break;
             }
             default: {
-                // Обычный враг: телеграф (первая половина, рисует сцена) → материализация
-                // с лёгким overshoot (easeOutBack).
                 const m = clamp((k - 0.5) / 0.5, 0, 1);
                 const c1 = 1.70158, c3 = c1 + 1;
                 const back = m <= 0 ? 0 : 1 + c3 * Math.pow(m - 1, 3) + c1 * Math.pow(m - 1, 2);
@@ -894,13 +815,12 @@ class Enemy {
             }
         }
 
-        if (k >= 1) { // появление завершено — вернуть точные цель/масштаб, включить AI
+        if (k >= 1) {
             this.spawning = false;
             s.setAlpha(1); s.setScale(sx, sy); s.angle = 0; s.setPosition(gx, gy);
         }
     }
 
-    // Облачко частиц в точке появления (пул сцены). c1/c2 — чередуемые цвета.
     _spawnPuff(n, c1, c2) {
         const sc = this.scene, s = this.sprite;
         if (!sc.particles || !sc.spawnParticle) return;
@@ -910,7 +830,6 @@ class Enemy {
     update(dt, px, py, arenaW, arenaH) {
         const s = this.sprite;
 
-        // Пока идёт анимация появления — юнит инертен (только spawn-FX), AI не работает.
         if (this.spawning) { this._updateSpawn(dt); return; }
 
         if (this.type !== EnemyType.BOSS && this.type !== EnemyType.GOBLIN && this.type !== EnemyType.SUBWOOFER && this.type !== EnemyType.HYPEMAN) {
@@ -934,14 +853,12 @@ class Enemy {
             this._updateBossBass(dt, px, py, arenaW, arenaH);
         } else if (this.type === EnemyType.BOSS) {
             this.justFiredVolley = false;
-            const bs = this.bossScale || this.baseScale * 3; // базовый масштаб для анимации/сброса
+            const bs = this.bossScale || this.baseScale * 3;
             const enraged = this.isBoss2 && (this.hp <= this.maxHp / 2);
             const walkDuration = enraged ? 2.5 : 4.0;
             const prepDuration = enraged ? 0.6 : 0.8;
             const recoverDuration = enraged ? 0.8 : 1.2;
             const dashSpeed = enraged ? 1600 : 1200;
-            // Глава 1: B2 движется чуть медленнее игрока без прокачек (220) — на 10, чтобы его
-            // можно было кайтить. В остальных главах прежнее поведение (150 / 200 в ярости).
             if (this.isBoss2) this.speed = (this.scene.currentChapter === 1) ? 210 : (enraged ? 200 : 150);
 
             if (this.bossState === BossState.WALKING) {
@@ -950,7 +867,6 @@ class Enemy {
                 s.y += dir.y * this.speed * dt;
                 this.walkTimer += dt * 10;
                 s.angle = Math.sin(this.walkTimer) * 5;
-                // Анимация ходьбы: вертикальный «шаг» с приседанием/растяжением (squash-stretch).
                 const bob = Math.sin(this.walkTimer * 1.7) * 0.06;
                 s.setScale(bs * (1 - bob * 0.4), bs * (1 + bob));
                 this.bossTimer += dt;
@@ -963,7 +879,7 @@ class Enemy {
             } else if (this.bossState === BossState.PREPARING) {
                 this.bossTimer += dt;
                 s.angle = Math.sin(this.bossTimer * 60) * 15;
-                s.setScale(bs, bs); // снять «шаг» ходьбы
+                s.setScale(bs, bs);
                 if (this.bossTimer >= prepDuration) { this.bossState = BossState.JUMPING; this.bossTimer = 0; }
             } else if (this.bossState === BossState.JUMPING) {
                 this.bossTimer += dt;
@@ -986,7 +902,6 @@ class Enemy {
             this.justSoundWave = false;
             const base = this.baseScale;
             if (this.subState === 'MOVE') {
-                // Сближается с игроком; бьёт волной только подойдя на APPROACH_RANGE.
                 const dir = normalize(px - s.x, py - s.y);
                 s.x += dir.x * this.speed * dt;
                 s.y += dir.y * this.speed * dt;
@@ -999,14 +914,12 @@ class Enemy {
                 const inRange = (dx * dx + dy * dy) <= C.SUBWOOFER.APPROACH_RANGE * C.SUBWOOFER.APPROACH_RANGE;
                 if (this.subTimer >= C.SUBWOOFER.REARM && inRange) { this.subState = 'CHARGE'; this.subTimer = 0; }
             } else if (this.subState === 'CHARGE') {
-                // Телеграф: набухает и дрожит — игрок видит, что сейчас «бахнет».
                 this.subTimer += dt;
                 const pulse = 1 + 0.25 * clamp(this.subTimer / 0.7, 0, 1) + 0.05 * Math.sin(this.subTimer * 40);
                 s.setScale(base * pulse, base * pulse);
                 s.angle = Math.sin(this.subTimer * 50) * 4;
                 if (this.subTimer >= 0.7) { this.subState = 'BOOM'; this.subTimer = 0; this._waveFired = false; s.angle = 0; }
             } else if (this.subState === 'BOOM') {
-                // Один импульс: волна летит в сторону игрока; масштаб откатывается к базе.
                 this.subTimer += dt;
                 if (!this._waveFired) { this.justSoundWave = true; this._waveFired = true; }
                 const rec = clamp(this.subTimer / 0.45, 0, 1);
@@ -1014,28 +927,22 @@ class Enemy {
                 if (this.subTimer >= 0.45) { this.subState = 'MOVE'; this.subTimer = 0; s.setScale(base, base); }
             }
         } else if (this.type === EnemyType.HYPEMAN) {
-            // Кайтинг: держит игрока на краю круга хила. Дальше AURA_RADIUS — подходит;
-            // ближе FLEE_DIST — убегает; в промежутке стоит (гистерезис против дёрганья).
             const dx = s.x - px, dy = s.y - py;
             const d = Math.sqrt(dx * dx + dy * dy) || 1;
-            if (d < C.HYPEMAN.FLEE_DIST) {            // игрок подошёл вплотную — бежит прочь
+            if (d < C.HYPEMAN.FLEE_DIST) {
                 s.x = clamp(s.x + (dx / d) * this.speed * dt, 0, arenaW);
                 s.y = clamp(s.y + (dy / d) * this.speed * dt, 0, arenaH);
-            } else if (d > C.HYPEMAN.AURA_RADIUS) {   // далеко — подходит на радиус хила
+            } else if (d > C.HYPEMAN.AURA_RADIUS) {
                 s.x = clamp(s.x - (dx / d) * this.speed * dt, 0, arenaW);
                 s.y = clamp(s.y - (dy / d) * this.speed * dt, 0, arenaH);
             }
             this.walkTimer += dt * 8;
-            s.angle = Math.sin(this.walkTimer) * 6; // покачивание «в такт»
+            s.angle = Math.sin(this.walkTimer) * 6;
         }
 
         if (this.type === EnemyType.GOBLIN) {
             this.justThrew = false;
 
-            // Гоблин-стрелок подходит к краю видимой области и там встаёт, чтобы стрелять.
-            // Закрепление обратимо: если игрок убежал и гоблин вышел из кадра — он снова
-            // идёт к экрану. Гистерезис: встаёт с отступом от края (margin), а снимается
-            // с позиции только полностью выйдя из кадра, чтобы не дёргаться на границе.
             const view = this.scene.cameras.main.worldView;
             const margin = 80;
 
@@ -1069,9 +976,8 @@ class Enemy {
             if (this.goblinStationed) {
                 this.goblinTimer += dt;
                 if (this.goblinState === GoblinState.WALKING) {
-                    // Гоблин-стрелок не бегает: стоит на месте и ведёт прицельный огонь.
                     this.walkTimer += dt * 8;
-                    s.angle = Math.sin(this.walkTimer) * 4; // лёгкое покачивание на месте
+                    s.angle = Math.sin(this.walkTimer) * 4;
                     if (this.goblinTimer >= 2.5) {
                         this.goblinState = GoblinState.PREPARING;
                         this.throwTargetPos = { x: px, y: py };
@@ -1094,7 +1000,6 @@ class Enemy {
             }
         }
 
-        // Цвет/флэш
         if (this.hitFlashTimer > 0) {
             this.hitFlashTimer -= dt;
             s.setTint(rgb(255, 50, 50));
@@ -1111,7 +1016,6 @@ class Enemy {
                         s.setTint(rgb(200, 80, 255));
                     }
                 } else if (this.isBoss3) {
-                    // STROBE: показываем неоновый арт как есть; белая строб-вспышка при зарядке луча
                     if (this.strobeState === 'TELEGRAPH') {
                         const pulse = (Math.sin(this.strobeTimer * 30) + 1) / 2;
                         s.setTint(rgb(180 + 75 * pulse, 255, 255));
@@ -1136,25 +1040,24 @@ class Enemy {
             } else if (this.type === EnemyType.SUBWOOFER) {
                 if (this.subState === 'CHARGE') {
                     const pulse = (Math.sin(this.subTimer * 30) + 1) / 2;
-                    s.setTint(rgb(120 + 135 * pulse, 180 + 75 * pulse, 255)); // ярко-циан вспышка зарядки
+                    s.setTint(rgb(120 + 135 * pulse, 180 + 75 * pulse, 255));
                 } else if (this.subState === 'BOOM') {
-                    s.setTint(rgb(255, 255, 255)); // белый «удар»
+                    s.setTint(rgb(255, 255, 255));
                 } else {
                     const pulse = (Math.sin(this.walkTimer * 1.2) + 1) / 2;
-                    s.setTint(rgb(40 + 30 * pulse, 40 + 40 * pulse, 200 + 55 * pulse)); // глубокий сине-фиолет
+                    s.setTint(rgb(40 + 30 * pulse, 40 + 40 * pulse, 200 + 55 * pulse));
                 }
             } else if (this.type === EnemyType.MOSHER || this.type === EnemyType.MOSHERLING) {
                 const pulse = (Math.sin(this.walkTimer * 1.5) + 1) / 2;
-                s.setTint(rgb(255, 40 + 80 * pulse, 180 + 60 * pulse)); // неон-маджента «толпа»
+                s.setTint(rgb(255, 40 + 80 * pulse, 180 + 60 * pulse));
             } else if (this.type === EnemyType.HYPEMAN) {
                 const pulse = (Math.sin(this.walkTimer * 2) + 1) / 2;
-                s.setTint(rgb(255, 200 + 55 * pulse, 40)); // золотой «MC»
+                s.setTint(rgb(255, 200 + 55 * pulse, 40));
             } else {
                 s.clearTint();
             }
         }
 
-        // Клэмп в арену
         const halfW = s.displayWidth / 2;
         const halfH = s.displayHeight / 2;
         if (s.x < halfW) s.x = halfW;
@@ -1167,17 +1070,11 @@ class Enemy {
 }
 Enemy._nextId = 1;
 
-// ----------------------------------------------------------------------------
-// Bullet (Bullet.h)
-// ----------------------------------------------------------------------------
 class Bullet {
     constructor(scene, x, y, dirx, diry, damage, crit) {
         this.scene = scene;
         this.speed = 800;
         this.TRAIL_LENGTH = 8;
-        // Трейл — кольцевой буфер фиксированной ёмкости (две типизированные дорожки),
-        // выделяется ОДИН раз: точки не аллоцируются каждый кадр (как раньше {x,y} + shift).
-        // trailStart — индекс самой старой точки, trailCount — число валидных точек (0..cap).
         this.trailX = new Float64Array(this.TRAIL_LENGTH);
         this.trailY = new Float64Array(this.TRAIL_LENGTH);
         this.trailStart = 0;
@@ -1192,8 +1089,8 @@ class Bullet {
         this.isDestroyed = false;
         this.isCrit = crit;
         this.ricochetsLeft = 0;
-        this.pierceLeft = 0;   // прострел: сколько врагов ещё пробьёт
-        this.lastHit = null;   // последний пробитый враг (чтобы не бить его дважды)
+        this.pierceLeft = 0;
+        this.lastHit = null;
         this.trailX[0] = x; this.trailY[0] = y; this.trailStart = 0; this.trailCount = 1;
         this.vx = dirx * this.speed;
         this.vy = diry * this.speed;
@@ -1205,7 +1102,6 @@ class Bullet {
     }
 
     update(dt) {
-        // Записываем позицию ДО сдвига (как и раньше) в кольцевой буфер — без аллокаций.
         const cap = this.TRAIL_LENGTH;
         if (this.trailCount < cap) {
             const i = (this.trailStart + this.trailCount) % cap;
@@ -1213,7 +1109,7 @@ class Bullet {
             this.trailCount++;
         } else {
             this.trailX[this.trailStart] = this.sprite.x; this.trailY[this.trailStart] = this.sprite.y;
-            this.trailStart = (this.trailStart + 1) % cap; // перезаписали старейшую — сдвигаем начало
+            this.trailStart = (this.trailStart + 1) % cap;
         }
         this.sprite.x += this.vx * dt;
         this.sprite.y += this.vy * dt;
@@ -1223,15 +1119,11 @@ class Bullet {
     destroy() { this.sprite.destroy(); }
 }
 
-// ----------------------------------------------------------------------------
-// EnemyProjectile (EnemyProjectile.h)
-// ----------------------------------------------------------------------------
 class EnemyProjectile {
     constructor(scene, x, y, tx, ty) {
         this.scene = scene;
         this.sprite = scene.addWorld(scene.add.sprite(x, y, 'weaponEnemyV'));
         this.sprite.setOrigin(0.5, 0.5);
-        // пурпурный ореол (PlayState.cpp)
         this.glow = scene.addWorld(scene.add.sprite(x, y, 'weaponEnemyV'));
         this.glow.setOrigin(0.5, 0.5);
         this.glow.setDisplaySize(58 * 1.45, 58 * 1.45);
@@ -1243,8 +1135,8 @@ class EnemyProjectile {
 
     reinit(x, y, tx, ty) {
         this.isDestroyed = false;
-        this.isStun = false; // стан-снаряд босса-доктора (ставится сценой при спавне)
-        this.damage = 20; // дефолт в новой шкале; фактический урон проставляется от врага-стрелка
+        this.isStun = false;
+        this.damage = 20;
         const dir = normalize(tx - x, ty - y);
         this.vx = dir.x * 550;
         this.vy = dir.y * 550;
@@ -1269,9 +1161,6 @@ class EnemyProjectile {
     destroy() { this.sprite.destroy(); this.glow.destroy(); }
 }
 
-// ----------------------------------------------------------------------------
-// BossSoul (BossSoul.h)
-// ----------------------------------------------------------------------------
 class BossSoul {
     constructor(scene, x, y, type) {
         this.scene = scene;
@@ -1285,7 +1174,6 @@ class BossSoul {
         const sc = 80 / Math.max(this.sprite.width, this.sprite.height);
         this.sprite.setScale(sc, sc);
 
-        // свечение под душой (Game::render)
         this.glow = scene.addWorld(scene.add.circle(x, y, 65, 0x000000, 0));
         this.glow.setDepth(-0.5);
     }
@@ -1299,18 +1187,17 @@ class BossSoul {
         if (this.soulType === 1) {
             this.sprite.setTint(rgb(200 + 55 * pulse, 50, 100 + 155 * pulse));
         } else if (this.soulType === 3) {
-            this.sprite.setTint(rgb(0, 200 + 55 * pulse, 255)); // STROBE — циан
+            this.sprite.setTint(rgb(0, 200 + 55 * pulse, 255));
         } else if (this.soulType === 4) {
-            this.sprite.setTint(rgb(40, 200 + 55 * pulse, 110)); // ЧЕРЕП (Доктор) — зелёный
+            this.sprite.setTint(rgb(40, 200 + 55 * pulse, 110));
         } else if (this.soulType === 5) {
-            this.sprite.setTint(rgb(40, 120 + 80 * pulse, 255)); // ЗВУКОВАЯ ВОЛНА (BASS) — синий
+            this.sprite.setTint(rgb(40, 120 + 80 * pulse, 255));
         } else if (this.soulType === 6) {
-            this.sprite.setTint(rgb(255, 60 + 80 * pulse, 170)); // РАСКОЛ (SPLIT) — магента
+            this.sprite.setTint(rgb(255, 60 + 80 * pulse, 170));
         } else {
             this.sprite.setTint(rgb(80 + 120 * pulse, 30 * pulse, 255));
         }
 
-        // glow
         const gp = (Math.sin(globalTime * 3.5) + 1) / 2;
         this.glow.x = this.sprite.x;
         this.glow.y = this.sprite.y;
@@ -1321,19 +1208,14 @@ class BossSoul {
     destroy() { this.sprite.destroy(); this.glow.destroy(); }
 }
 
-// ----------------------------------------------------------------------------
-// SkullProjectile — снаряд способности «ЧЕРЕП» (id 4). Летит к курсору, наводится на
-// ближайшего ещё не задетого врага и бьёт по цепочке до C.ABILITY.SKULL_MAX_HITS целей;
-// урон растёт на SKULL_BOUNCE_BONUS за каждый отскок. Управляется сценой (массив skulls).
-// ----------------------------------------------------------------------------
 class SkullProjectile {
     constructor(scene, x, y, dirx, diry, firstTarget) {
         this.scene = scene;
         this.x = x; this.y = y;
         const n = normalize(dirx, diry);
-        this.vx = n.x; this.vy = n.y;        // единичное направление полёта
-        this.target = firstTarget || null;   // первая цель — ближайшая к курсору (прицел игрока)
-        this.hitIds = [];                     // _id уже задетых врагов (не бьём дважды)
+        this.vx = n.x; this.vy = n.y;
+        this.target = firstTarget || null;
+        this.hitIds = [];
         this.hitsDone = 0;
         this.life = C.ABILITY.SKULL_LIFETIME;
         this.dead = false;
@@ -1358,11 +1240,10 @@ class SkullProjectile {
     update(dt) {
         this.life -= dt;
         if (this.life <= 0) { this.dead = true; return; }
-        // Текущая цель невалидна (мертва/спавнится/уже задета)? — берём ближайшую не задетую.
         if (!this.target || this.target.hp <= 0 || this.target.spawning || this.hitIds.indexOf(this.target._id) !== -1) {
             this.target = this._nearestTarget();
         }
-        if (this.target) { // наведение прямо на цель — надёжная цепочка отскоков
+        if (this.target) {
             const n = normalize(this.target.sprite.x - this.x, this.target.sprite.y - this.y);
             this.vx = n.x; this.vy = n.y;
         }
@@ -1388,18 +1269,13 @@ class SkullProjectile {
         for (let i = 0; i < 8; i++) this.scene.particles.push(this.scene.spawnParticle(this.x, this.y, (i & 1) ? rgb(120, 255, 150) : rgb(220, 255, 220)));
         this.hitIds.push(e._id);
         this.hitsDone++;
-        this.target = null; // следующая цель выберется в следующем кадре
+        this.target = null;
         if (this.hitsDone >= A.SKULL_MAX_HITS) this.dead = true;
     }
 
     destroy() { this.sprite.destroy(); }
 }
 
-// ----------------------------------------------------------------------------
-// ShatterBomb — снаряд способности «РАСКОЛ» (id 6). Летит прямо к курсору; при попадании во
-// врага / достижении дальности / выходе за арену взрывается на C.ABILITY.SHATTER_FRAGMENTS
-// осколков (обычные пули игрока), летящих во все стороны. Управляется сценой (массив bombs).
-// ----------------------------------------------------------------------------
 class ShatterBomb {
     constructor(scene, x, y, dirx, diry) {
         this.scene = scene;
@@ -1449,9 +1325,6 @@ class ShatterBomb {
     destroy() { this.sprite.destroy(); }
 }
 
-// ----------------------------------------------------------------------------
-// Gem (Gem.h)
-// ----------------------------------------------------------------------------
 class Gem {
     constructor(scene, x, y) {
         this.scene = scene;
@@ -1485,7 +1358,6 @@ class Gem {
 
         const d = dist(this.sprite.x, this.sprite.y, px, py);
         const attracting = d < pickupRadius;
-        // В полёте к игроку (под действием магнита) опыт вдвое меньше; лёжа на полу — обычный размер.
         const sizeMul = attracting ? 0.5 : 1;
         this.sprite.setScale(this.baseScale * breath * sizeMul, this.baseScale * breath * sizeMul);
         if (attracting) {
@@ -1499,9 +1371,6 @@ class Gem {
     destroy() { this.sprite.destroy(); }
 }
 
-// ----------------------------------------------------------------------------
-// Coin (Coin.h)
-// ----------------------------------------------------------------------------
 class Coin {
     constructor(scene, x, y) {
         this.scene = scene;
@@ -1535,16 +1404,13 @@ class Coin {
     destroy() { this.sprite.destroy(); }
 }
 
-// ----------------------------------------------------------------------------
-// Vinyl (Vinyl.h)
-// ----------------------------------------------------------------------------
 class Vinyl {
     constructor(scene, x, y) {
         this.scene = scene;
         this.sprite = scene.addWorld(scene.add.sprite(x, y, 'vinyl'));
         this.sprite.setOrigin(0.5, 0.5);
         this.sprite.setDisplaySize(50, 50);
-        this._baseSX = this.sprite.scaleX; this._baseSY = this.sprite.scaleY; // опора для пульса
+        this._baseSX = this.sprite.scaleX; this._baseSY = this.sprite.scaleY;
         this.reinit(x, y);
     }
 
@@ -1557,7 +1423,6 @@ class Vinyl {
         return this;
     }
 
-    // «Дыхание»: плавная пульсация масштаба вместо вращения.
     update(dt) {
         this._pulseT += dt;
         const p = 1 + 0.12 * Math.sin(this._pulseT * 4);
@@ -1568,9 +1433,6 @@ class Vinyl {
     destroy() { this.sprite.destroy(); }
 }
 
-// ----------------------------------------------------------------------------
-// Particle (Particle.h)
-// ----------------------------------------------------------------------------
 class Particle {
     constructor(scene, x, y, color) {
         this.scene = scene;
@@ -1606,9 +1468,6 @@ class Particle {
     destroy() { this.rect.destroy(); }
 }
 
-// ----------------------------------------------------------------------------
-// DamageText (DamageText.h)
-// ----------------------------------------------------------------------------
 class DamageText {
     constructor(scene, x, y, damage, isCrit) {
         this.scene = scene;

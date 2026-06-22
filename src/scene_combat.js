@@ -1,15 +1,4 @@
-// scene_combat.js — бой/коллизии врагов MainScene (вынесено из scene.js).
-// Методы навешиваются на MainScene.prototype (класс объявлен в scene.js, грузится раньше).
-// Сюда входят: сепарация врагов через спатиал-грид, обработка смертей (дроп/распад/души/
-// очки/артефакты), таблица очков за тип врага. Инлайновый цикл попаданий пуль/снарядов
-// пока остаётся в updatePlaying (scene.js).
 
-// Построение спатиал-грида врагов (Game::update). Переиспользуемая сетка: ячейки-массивы
-// создаются один раз и живут между кадрами; каждый кадр чистим только задействованные
-// ячейки (по списку _sepTouched), а не аллоцируем новую сетку — меньше нагрузки на GC.
-// ОДИН грид за кадр обслуживает И сепарацию врагов (separateEnemies), И бродфейз попаданий
-// пуль (_bulletEnemyCollisions). Оба потребителя вызываются сразу после построения, пока
-// массив enemies не мутируется (смерти/распад мошеров обрабатываются позже).
 MainScene.prototype._buildEnemyGrid = function() {
         const CELL = C.CELL_SIZE;
         const cols = Math.ceil(C.ARENA_WIDTH / CELL);
@@ -28,15 +17,11 @@ MainScene.prototype._buildEnemyGrid = function() {
             const r = clamp(Math.floor(e.sprite.y / CELL), 0, rows - 1);
             const i = r * cols + c;
             const cell = grid[i];
-            if (cell.length === 0) this._sepTouched.push(i); // запоминаем непустые ячейки для очистки
+            if (cell.length === 0) this._sepTouched.push(i);
             cell.push(e);
         }
     };
 
-// Бродфейз попаданий пуль по гриду врагов (_buildEnemyGrid должен быть построен этим кадром):
-// каждая пуля проверяет лишь 3×3 окрестность своей ячейки вместо O(врагов×пуль). Радиусы
-// попадания (BULLET_HIT 50px / BOSS_HIT 150px) ≤ CELL_SIZE (150px), поэтому 3×3 гарантированно
-// покрывает любую цель в радиусе. Логика урона/пробития перенесена 1:1 из updatePlaying.
 MainScene.prototype._bulletEnemyCollisions = function() {
         const CELL = C.CELL_SIZE;
         const cols = this._sepCols, rows = this._sepRows, grid = this._sepGrid;
@@ -57,14 +42,13 @@ MainScene.prototype._bulletEnemyCollisions = function() {
                             e.hp -= b.damage;
                             e.hitFlashTimer = 0.08;
                             this.dmgTexts.push(this.spawnDamageText(e.sprite.x, e.sprite.y, b.damage, b.isCrit));
-                            // Прострел: пуля проходит насквозь, следующему врагу — 50% урона.
                             if (b.pierceLeft > 0) {
                                 b.pierceLeft--;
-                                b.lastHit = e; // не бить того же врага повторно
+                                b.lastHit = e;
                                 b.damage = Math.max(1, Math.floor(b.damage * 0.5));
                             } else {
                                 b.isDestroyed = true;
-                                break; // пуля израсходована — дальше ячейку не сканируем
+                                break;
                             }
                         }
                     }
@@ -73,8 +57,6 @@ MainScene.prototype._bulletEnemyCollisions = function() {
         }
     };
 
-// Сепарация врагов по уже построенному гриду (_buildEnemyGrid). Считается только в радиусе
-// ~1200px от игрока (SEPARATION_ACTIVE_SQ).
 MainScene.prototype.separateEnemies = function(px, py) {
         const CELL = C.CELL_SIZE;
         const cols = this._sepCols, rows = this._sepRows, grid = this._sepGrid;
@@ -90,7 +72,7 @@ MainScene.prototype.separateEnemies = function(px, py) {
                     if (cell.length === 0) continue;
                     for (const other of cell) {
                         if (e === other) continue;
-                        if (e._id >= other._id) continue; // обрабатываем пару один раз (замена &enemy >= other)
+                        if (e._id >= other._id) continue;
                         if (distSq(other.sprite.x, other.sprite.y, px, py) > R) continue;
                         const dq = distSq(e.sprite.x, e.sprite.y, other.sprite.x, other.sprite.y);
                         const minOverlap = (e.isBoss || other.isBoss) ? C.COLLISION.OVERLAP_BOSS : C.COLLISION.OVERLAP_NORMAL;
@@ -114,14 +96,13 @@ MainScene.prototype.separateEnemies = function(px, py) {
 
 MainScene.prototype.handleEnemyDeaths = function(px, py) {
         const s = this.save, p = this.player;
-        const split = []; // мини-мошеры, заспавненные при смерти Мошеров (пушим после цикла)
+        const split = [];
         for (const e of this.enemies) {
             if (e.hp > 0) continue;
             this.killCount++;
-            // Мошер: распад на 2-3 мини. Делаем до дропа; мини НЕ делятся (splitOnDeath=false).
             if (e.splitOnDeath && this._mosherKey) {
                 const SP = C.ENEMY.MOSHER;
-                const n = SP.splitMin + randInt(SP.splitMax - SP.splitMin + 1); // splitMin..splitMax
+                const n = SP.splitMin + randInt(SP.splitMax - SP.splitMin + 1);
                 for (let i = 0; i < n; i++) {
                     const ang = Math.random() * Math.PI * 2;
                     const mx = clamp(e.sprite.x + Math.cos(ang) * 40, 0, C.ARENA_WIDTH);
@@ -132,14 +113,11 @@ MainScene.prototype.handleEnemyDeaths = function(px, py) {
                     split.push(m);
                 }
             }
-            // Очки за убийство (боссы дают больше). В безумном этапе очки не начисляются.
             if (!this.crazyMode) this.runScore += this._scoreFor(e);
             if (hasArtifact(s, ARTIFACT.SOUL_LEECH)) {
-                // +0.5% крита за килл, максимум +5% к базе (10 стаков).
                 const cap = p.baseCritChance + 0.05;
                 p.critChance = Math.min(cap, p.critChance + 0.005);
             }
-            // BLOOD PACT: вампиризм за килл — 2 HP за убийство (новая шкала HP=100).
             if (hasArtifact(s, ARTIFACT.BLOOD_PACT) && p.hp < p.maxHp) {
                 p.hp = Math.min(p.maxHp, p.hp + 2);
             }
@@ -147,7 +125,7 @@ MainScene.prototype.handleEnemyDeaths = function(px, py) {
             if (e.type === EnemyType.GOBLIN) {
                 for (let i = 0; i < 30; i++) this.particles.push(this.spawnParticle(ex, ey, randInt(2) === 0 ? rgb(180, 0, 255) : rgb(255, 0, 200)));
                 for (let k = 0; k < 3; k++) this.gems.push(this.spawnGem(ex - 24 + randInt(40) - 20, ey + randInt(40) - 20));
-                if (!this.crazyMode && randInt(100) < 50) this.coins.push(this.spawnCoin(ex + 38, ey)); // монет вдвое меньше; в безумном этапе монет нет
+                if (!this.crazyMode && randInt(100) < 50) this.coins.push(this.spawnCoin(ex + 38, ey));
                 if (randInt(100) < 35) this.vinyls.push(this.spawnVinyl(ex, ey));
                 continue;
             }
@@ -159,7 +137,6 @@ MainScene.prototype.handleEnemyDeaths = function(px, py) {
 
             if (e.isBoss3) {
                 this.audio.play('sfx_boss_death', { volume: 1 });
-                // Распадающийся босс: делится на копии следующего тира (в split[], как мошер).
                 if (e.isBossSplit && e.canSplit) {
                     for (let i = 0; i < e.splitCount; i++) {
                         const ang = (i / e.splitCount) * Math.PI * 2 + Math.random();
@@ -172,28 +149,23 @@ MainScene.prototype.handleEnemyDeaths = function(px, py) {
                         split.push(c);
                     }
                 }
-                // Финал боя боссов-3: смерть не делится и других живых боссов-3 не осталось.
-                // (копии этого кадра ещё в split[], не в enemies — поэтому не считаются живыми тут).
                 const isFinal = !(e.isBossSplit && e.canSplit) && !this.enemies.some(o => o !== e && o.isBoss3 && o.hp > 0);
-                // Тряска экрана: обычный босс-3 — всегда; «Распад» — только при первом убийстве
-                // (тир 0 распадается) и при смерти последней живой копии. Промежуточные копии не трясут.
                 if (!e.isBossSplit || e.splitTier === 0 || isFinal) this.triggerShake(0.8, 70);
                 if (isFinal && !this.crazyMode) {
-                    this._boss3Alive = false; // гейт спавна снова открыт (см. _updateSpawning)
+                    this._boss3Alive = false;
                     this.bossSouls.push(new BossSoul(this, ex, ey, e.isBossSplit ? 6 : 3));
                     for (let k = 0; k < 20; k++) {
                         this.gems.push(this.spawnGem(ex + randInt(150) - 75, ey + randInt(150) - 75));
                         this.coins.push(this.spawnCoin(ex + randInt(150) - 75, ey + randInt(150) - 75));
                     }
                     for (let k = 0; k < 3; k++) this.vinyls.push(this.spawnVinyl(ex + randInt(80) - 40, ey + randInt(80) - 40));
-                    this._startCrazyMode(); // вся линия босса мертва — этап сходит с ума, открывается портал
+                    this._startCrazyMode();
                 } else {
-                    this._boss3Alive = true; // бой продолжается (живы копии)
+                    this._boss3Alive = true;
                 }
             } else if (e.isBoss2) {
                 this.triggerShake(0.8, 60);
                 this.audio.play('sfx_boss_death', { volume: 1 });
-                // Босс BASS роняет уникальную душу → ЗВУКОВАЯ ВОЛНА (type 5); обычный B2 — ВИХРЬ (type 2).
                 this.bossSouls.push(new BossSoul(this, ex, ey, e.isBossBass ? 5 : 2));
                 for (let k = 0; k < 17; k++) {
                     this.gems.push(this.spawnGem(ex + randInt(150) - 75, ey + randInt(150) - 75));
@@ -208,27 +180,21 @@ MainScene.prototype.handleEnemyDeaths = function(px, py) {
                     this.coins.push(this.spawnCoin(ex + randInt(150) - 75, ey + randInt(150) - 75));
                 }
                 for (let k = 0; k < 2; k++) this.vinyls.push(this.spawnVinyl(ex + randInt(80) - 40, ey + randInt(80) - 40));
-                // Доктор (1-й босс гл.2) роняет уникальную душу → способность ЧЕРЕП (type 4);
-                // прочие первые боссы — обычная душа (НЕУЯЗВИМОСТЬ/УДАР, type 1).
                 this.bossSouls.push(new BossSoul(this, ex, ey, e.isBossDoc ? 4 : 1));
-                this._firstBossKilled = true; // первый босс убит — смерть теперь засчитывается в топ
+                this._firstBossKilled = true;
                 if (this.gamePhase === GamePhase.PHASE_1) this.gamePhase = GamePhase.CLEARING;
             } else {
-                // Гем и монета разнесены в стороны, чтобы опыт не лежал под монетой.
                 const off = 24;
                 this.gems.push(this.spawnGem(ex - off, ey));
-                if (!this.crazyMode && randInt(100) < 15) this.coins.push(this.spawnCoin(ex + off, ey)); // монет вдвое меньше (30%→15%); в безумном этапе монет нет
+                if (!this.crazyMode && randInt(100) < 15) this.coins.push(this.spawnCoin(ex + off, ey));
                 if (randInt(100) < 2) this.vinyls.push(this.spawnVinyl(ex, ey));
             }
         }
         for (const m of split) this.enemies.push(m);
     };
 
-// Сколько очков даёт убийство врага e (боссы — больше).
 MainScene.prototype._scoreFor = function(e) {
         const S = C.SCORE;
-        // Копии распадающегося босса дают долю очков (тир 1 — 20%, тир 2 — 8%), чтобы числом
-        // не раздувать счёт; сам босс (тир 0) — полные очки.
         if (e.isBoss3) return (e.isBossSplit && e.splitTier > 0) ? Math.round(S.BOSS3 * (e.splitTier === 1 ? 0.2 : 0.08)) : S.BOSS3;
         if (e.isBoss2) return S.BOSS2;
         if (e.isBoss) return S.BOSS1;

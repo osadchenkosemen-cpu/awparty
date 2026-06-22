@@ -1,120 +1,90 @@
-// Global tuning constants — ported 1:1 from the C++ source (Game.h / Game.cpp).
-// All gameplay magic numbers live here so the JS port stays faithful.
 
 const C = {
-    // --- Arena / view (Game.h) ---
     ARENA_WIDTH: 3000,
     ARENA_HEIGHT: 3000,
     VIEW_WIDTH: 1920,
     VIEW_HEIGHT: 1080,
     CELL_SIZE: 150,
 
-    // --- Ground Slam (Game.h) ---
     SLAM_RADIUS: 300,
     SLAM_RING_DURATION: 0.45,
 
-    // --- Радиусы коллизий ---
-    // Хранятся как КВАДРАТЫ расстояний (сравнение без sqrt). Значения подобраны под
-    // текущие размеры спрайтов (указаны в комментариях) — при смене арта правьте здесь,
-    // в одном месте, а не по коду. Радиус в px = sqrt(значения).
     COLLISION: {
-        GEM_PICKUP_SQ: 1600,           // 40px — подбор кристалла опыта
-        COIN_PICKUP_SQ: 1600,          // 40px — подбор монеты
-        VINYL_PICKUP_SQ: 2500,         // 50px — подбор пластинки (лечение)
-        PROJECTILE_HIT_SQ: 1600,       // 40px — вражеский снаряд по игроку
-        SOUL_PICKUP_SQ: 4000,          // ~63px — подбор души босса
-        ENEMY_ATTACK_SQ: 3600,         // 60px — обычный враг бьёт игрока (спрайт ~90px)
-        GOBLIN_ATTACK_SQ: 2500,        // 50px — контактный урон гоблина-стрелка
-        BOSS_HIT_SQ: 22500,            // 150px — радиус босса (спрайт ~270px)
-        BULLET_HIT_SQ: 2500,           // 50px — пуля по обычному врагу (спрайт ~90px)
-        SEPARATION_ACTIVE_SQ: 1440000, // 1200px — сепарация считается только вблизи игрока
-        OVERLAP_NORMAL: 70,            // мин. зазор между обычными врагами (px)
-        OVERLAP_BOSS: 200,             // мин. зазор, если в паре есть босс (px)
+        GEM_PICKUP_SQ: 1600,
+        COIN_PICKUP_SQ: 1600,
+        VINYL_PICKUP_SQ: 2500,
+        PROJECTILE_HIT_SQ: 1600,
+        SOUL_PICKUP_SQ: 4000,
+        ENEMY_ATTACK_SQ: 3600,
+        GOBLIN_ATTACK_SQ: 2500,
+        BOSS_HIT_SQ: 22500,
+        BULLET_HIT_SQ: 2500,
+        SEPARATION_ACTIVE_SQ: 1440000,
+        OVERLAP_NORMAL: 70,
+        OVERLAP_BOSS: 200,
     },
 
-    // --- Параметры способностей игрока (activateAbility) ---
     ABILITY: {
-        INVINCIBLE_DURATION: 2,        // НЕУЯЗВИМОСТЬ — секунды
-        SLAM_DAMAGE: 8,                // УДАР ОЗЕМЬ — урон в радиусе SLAM_RADIUS
-        SLAM_KNOCKBACK: 380,           // отбрасывание врагов (px)
-        DISC_COUNT: 12,                // ВИХРЬ ДИСКОВ — число дисков по кругу
-        DISC_DAMAGE: 5,                // урон одного диска
-        LASER_LENGTH: 1500,            // ЛАЗЕР — длина луча (px)
-        LASER_HALF_WIDTH: 70,          // половина ширины луча (px)
-        LASER_DAMAGE: 60,              // урон луча
-        LASER_HIT_RADIUS: 45,          // радиус попадания по обычному врагу (px)
-        LASER_BOSS_HIT_RADIUS: 150,    // радиус попадания по боссу (px)
-        // ЧЕРЕП (id 4, душа Доктора гл.2): направленный снаряд-рикошет. Урон за попадание =
-        // attackDamage игрока × (SKULL_DAMAGE_MULT + SKULL_BOUNCE_BONUS × номер_отскока).
-        SKULL_DAMAGE_MULT: 1.0,        // базовый множитель урона (100% от атаки игрока)
-        SKULL_BOUNCE_BONUS: 0.2,       // +20% урона за каждый следующий отскок
-        SKULL_MAX_HITS: 5,             // макс. целей (1-я цель + 4 отскока)
-        SKULL_SPEED: 950,              // скорость полёта, px/с
-        SKULL_SEEK_RADIUS: 750,        // радиус поиска следующей цели, px
-        SKULL_HIT_RADIUS: 60,          // дистанция засчитывания попадания, px
-        SKULL_LIFETIME: 2.5,           // макс. время жизни (если цели кончились), сек
-        SKULL_SIZE: 64,                // размер спрайта снаряда, px
-        // ЗВУКОВАЯ ВОЛНА (id 5, душа босса BASS): круговой импульс вокруг игрока —
-        // отбрасывает и бьёт всех врагов в радиусе.
-        SONIC_DAMAGE: 25,              // урон по каждому врагу в радиусе
-        SONIC_RADIUS: 420,             // радиус действия, px
-        SONIC_KNOCKBACK: 450,          // отброс врагов наружу, px
-        // РАСКОЛ (id 6, душа босса SPLIT): заряд летит к курсору и взрывается на осколки-пули.
-        SHATTER_FRAGMENTS: 14,         // число осколков при взрыве
-        SHATTER_DAMAGE: 18,            // урон одного осколка
-        SHATTER_SPEED: 850,            // скорость полёта заряда, px/с
-        SHATTER_RANGE: 620,            // дистанция до взрыва (если не попал во врага), px
-        SHATTER_SIZE: 44,              // размер спрайта заряда, px
+        INVINCIBLE_DURATION: 2,
+        SLAM_DAMAGE: 8,
+        SLAM_KNOCKBACK: 380,
+        DISC_COUNT: 12,
+        DISC_DAMAGE: 5,
+        LASER_LENGTH: 1500,
+        LASER_HALF_WIDTH: 70,
+        LASER_DAMAGE: 60,
+        LASER_HIT_RADIUS: 45,
+        LASER_BOSS_HIT_RADIUS: 150,
+        SKULL_DAMAGE_MULT: 1.0,
+        SKULL_BOUNCE_BONUS: 0.2,
+        SKULL_MAX_HITS: 5,
+        SKULL_SPEED: 950,
+        SKULL_SEEK_RADIUS: 750,
+        SKULL_HIT_RADIUS: 60,
+        SKULL_LIFETIME: 2.5,
+        SKULL_SIZE: 64,
+        SONIC_DAMAGE: 25,
+        SONIC_RADIUS: 420,
+        SONIC_KNOCKBACK: 450,
+        SHATTER_FRAGMENTS: 14,
+        SHATTER_DAMAGE: 18,
+        SHATTER_SPEED: 850,
+        SHATTER_RANGE: 620,
+        SHATTER_SIZE: 44,
     },
 
-    // STROBE (босс 3 этапа): урон лазерного луча и допуск ширины при попадании по игроку.
     STROBE_BEAM_DAMAGE: 40,
     STROBE_BEAM_HIT_MARGIN: 40,
 
-    // Сабвуфер: направленная звуковая волна (сектор 90° в сторону игрока, малый радиус),
-    // которая отбрасывает игрока и наносит урон. Урон берётся из enemy.damage.
     SUBWOOFER: {
-        WAVE_RADIUS: 340,            // макс. радиус волны, px
-        WAVE_HALF_ARC: Math.PI / 4,  // полу-угол сектора (45° → раствор 90°)
-        WAVE_EXPAND: 0.32,           // время раскрытия до макс. радиуса, сек
-        WAVE_KNOCKBACK: 250,         // импульс отбрасывания игрока, px
-        APPROACH_RANGE: 300,         // сближается с игроком до этой дистанции, прежде чем бить
-        REARM: 1.5,                  // мин. перезарядка между волнами, сек
+        WAVE_RADIUS: 340,
+        WAVE_HALF_ARC: Math.PI / 4,
+        WAVE_EXPAND: 0.32,
+        WAVE_KNOCKBACK: 250,
+        APPROACH_RANGE: 300,
+        REARM: 1.5,
     },
 
-    // Хайпмен: убегает от игрока и излучает ауру поддержки — врагам в радиусе даёт
-    // бонус к макс. HP и реген. Сам почти не атакует. Убьёшь — бонус/реген спадает.
     HYPEMAN: {
-        AURA_RADIUS: 200,            // радиус ауры, px
-        HP_BONUS: 5,                 // +макс. HP врагам в ауре (флэт, снимается при выходе)
-        REGEN: 1,                    // лечение врагов в ауре, HP/сек
-        // Кайтинг: цель — держать игрока на краю круга хила (AURA_RADIUS). Дальше него
-        // Хайпмен подходит; ближе FLEE_DIST (вплотную) — убегает; между ними стоит.
-        FLEE_DIST: 150,              // ближе этой дистанции Хайпмен убегает от игрока (< AURA_RADIUS)
+        AURA_RADIUS: 200,
+        HP_BONUS: 5,
+        REGEN: 1,
+        FLEE_DIST: 150,
     },
 
-    // Босс-доктор (этап 1, глава 2): «старший брат» Хайпмена. Кайтит игрока на краю
-    // своей ауры (держит союзников в зоне лечения) и кидает телеграфированный стан-снаряд.
-    // hp/speed/damage/scale — в C.BOSS.BD ниже; здесь только поведение.
     BOSSDOC: {
-        AURA_RADIUS: 275,            // радиус ауры лечения, px
-        HP_BONUS: 10,                // +макс. HP союзникам в ауре (×2 от хайпмена)
-        REGEN: 3,                    // лечение союзников в ауре, HP/сек
-        STANDOFF: 275,               // целевая дистанция до игрока = радиус ауры
-        FLEE_DIST: 225,              // ближе — отходит (держит дистанцию, < STANDOFF)
-        STUN_INTERVAL: 3.5,          // период между бросками стана, сек
-        TELEGRAPH: 0.6,              // замах перед броском, сек
-        STUN_DURATION: 0.5,          // длительность стана игрока, сек
-        STUN_DAMAGE: 18,             // урон стан-снаряда
-        STUN_PROJ_SPEED_MULT: 1.5,   // ×1.5 к базовой скорости снаряда (550) → ~825
+        AURA_RADIUS: 275,
+        HP_BONUS: 10,
+        REGEN: 3,
+        STANDOFF: 275,
+        FLEE_DIST: 225,
+        STUN_INTERVAL: 3.5,
+        TELEGRAPH: 0.6,
+        STUN_DURATION: 0.5,
+        STUN_DAMAGE: 18,
+        STUN_PROJ_SPEED_MULT: 1.5,
     },
 
-    // --- Базовые статы врагов: hp / speed / damage / размеры — в ОДНОМ месте ---
-    // Перенесено 1:1 из make*-методов entities.js, чтобы баланс правился здесь. Множители
-    // сложности главы накладываются поверх (scene._applyChapterEnemy/_applyChapterBoss).
-    // ВНИМАНИЕ: C.HYPEMAN / C.SUBWOOFER выше — это ПОВЕДЕНИЕ (аура, волна), а hp/speed/damage
-    // тех же врагов — здесь, в C.ENEMY. Размеры: BASE_SIZE — обычный враг; size — иной спрайт;
-    // scale — множитель к baseScale (полученному из размера спрайта).
     ENEMY: {
         BASE_SIZE: 90,
         NORMAL:     { hp: 2,  speed: 100, damage: 20 },
@@ -127,51 +97,38 @@ const C = {
         HYPEMAN:    { hp: 12, speed: 120, damage: 10, size: 130 },
     },
 
-    // Боссы трёх этапов (B1/B2/B3). scale — множитель к baseScale → bossScale.
     BOSS: {
         B1: { hp: 50,  speed: 130, damage: 50, scale: 3.0 },
         B2: { hp: 100, speed: 150, damage: 60, scale: 3.5 },
         B3: { hp: 180, speed: 140, damage: 40, scale: 3.2 },
-        // Босс-доктор (этап 1, глава 2). hp = B3 (180); поведение — в C.BOSSDOC.
         BD: { hp: 180, speed: 110, damage: 50, scale: 3.2 },
-        // Босс BASS (этап 2, глава 2): носорог-сабвуфер. Поведение — в C.BOSSBASS.
         BB: { hp: 130, speed: 150, damage: 60, scale: 3.5 },
-        // Босс SPLIT (этап 3, глава 2): распадается на копии. База тира 0; тиры — в C.BOSSSPLIT.
         BS: { hp: 220, speed: 180, damage: 60, scale: 3.2 },
     },
 
-    // Босс BASS (этап 2, глава 2): погоня с контактным уроном + волна баса вблизи +
-    // «носорожий» разгон по прямой. Конечный автомат — Enemy._updateBossBass.
     BOSSBASS: {
-        WAVE_RANGE: 520,        // дистанция до игрока, в которой выбирается волна (иначе разгон)
-        WAVE_TELEGRAPH: 0.6,    // замах перед волной, сек
-        WAVE_RADIUS_MULT: 1.8,  // волна шире обычной (× SUBWOOFER.WAVE_RADIUS)
-        RUSH_WINDUP: 0.8,       // замах перед разгоном, сек
-        RUSH_DURATION: 0.7,     // длительность разгона, сек
-        RUSH_SPEED: 1500,       // макс. скорость разгона, px/с (растёт по ходу)
-        RECOVER: 1.0,           // восстановление после атаки (босс уязвим), сек
-        ATTACK_GAP: 1.2,        // погоня между атаками, сек
+        WAVE_RANGE: 520,
+        WAVE_TELEGRAPH: 0.6,
+        WAVE_RADIUS_MULT: 1.8,
+        RUSH_WINDUP: 0.8,
+        RUSH_DURATION: 0.7,
+        RUSH_SPEED: 1500,
+        RECOVER: 1.0,
+        ATTACK_GAP: 1.2,
     },
 
-    // Босс SPLIT (этап 3, глава 2): «Распад». При смерти делится на копии следующего тира
-    // (1 → 2 → 6), берёт числом; копии быстро бегут к игроку, расталкивая обычных мобов.
-    // Каждый тир — меньше HP/урона/размера (см. TIERS). Логика — Enemy._updateBossSplit /
-    // handleEnemyDeaths. hpMult/dmgMult/scaleMult — доля от базы C.BOSS.BS.
     BOSSSPLIT: {
-        SHOVE_RADIUS: 170,      // в этом радиусе копия расталкивает обычных мобов, px
-        SHOVE_FORCE: 300,       // сила расталкивания, px/с
-        CHARGE_BURST: 1.2,      // первые секунды после спавна — рывок к игроку, сек
-        CHARGE_MULT: 1.8,       // множитель скорости во время рывка
+        SHOVE_RADIUS: 170,
+        SHOVE_FORCE: 300,
+        CHARGE_BURST: 1.2,
+        CHARGE_MULT: 1.8,
         TIERS: [
-            { hpMult: 1.0,  dmgMult: 1.0, scaleMult: 1.0,  splits: 2 }, // тир 0 — главный
-            { hpMult: 0.45, dmgMult: 0.6, scaleMult: 0.65, splits: 3 }, // тир 1 — средние (×2)
-            { hpMult: 0.22, dmgMult: 0.4, scaleMult: 0.42, splits: 0 }, // тир 2 — мелкие (×6)
+            { hpMult: 1.0,  dmgMult: 1.0, scaleMult: 1.0,  splits: 2 },
+            { hpMult: 0.45, dmgMult: 0.6, scaleMult: 0.65, splits: 3 },
+            { hpMult: 0.22, dmgMult: 0.4, scaleMult: 0.42, splits: 0 },
         ],
     },
 
-    // Анимация появления: пока spawnTimer < длительности, юнит инертен (не двигается,
-    // не бьёт). Обычные враги — телеграф+материализация; у боссов своя анимация (см.
-    // Enemy._updateSpawn / MainScene._drawSpawnFx).
     SPAWN: {
         ENEMY_DURATION: 0.45,
         BOSS1_DURATION: 1.4,
@@ -180,17 +137,13 @@ const C = {
         BOSSDOC_DURATION: 1.4,
     },
 
-    // --- Meta-progression caps (Game.h) ---
     MAX_PERM_MAXHP: 10,
     MAX_PERM_DAMAGE: 10,
     MAX_PERM_SPEED_LEVEL: 5,
     MAX_PERM_DASH_LEVEL: 5,
 
-    // Множитель монет в hardcore-режиме (награда за повышенную сложность).
     HARDCORE_COIN_MULT: 1.5,
 
-    // Очки за убийство (счёт забега → рекорды). Боссы дают существенно больше.
-    // В безумном этапе очки не начисляются (см. crazyMode) — защита от фарма.
     SCORE: {
         NORMAL: 10,
         FAST: 15,
@@ -205,18 +158,13 @@ const C = {
         BOSS3: 2000,
     },
 
-    // «Безумный» этап после убийства третьего босса: у всех мобов x5 HP (урон/скорость
-    // не трогаем), монеты больше не выпадают (защита от гринда), сверху по центру карты
-    // открывается портал — единственный выход на следующий уровень.
     CRAZY_HP_MULT: 5,
-    PORTAL_TOP_MARGIN: 280,  // отступ портала от верхнего края арены
-    PORTAL_RADIUS: 140,      // радиус срабатывания входа в портал
+    PORTAL_TOP_MARGIN: 280,
+    PORTAL_RADIUS: 140,
 
-    // Asset base path (assets live in the repo root so it's self-contained)
     ASSET_PATH: 'assets/',
 };
 
-// GameState enum (Game.h)
 const GameState = {
     MENU: 'MENU',
     LOBBY: 'LOBBY',
@@ -229,27 +177,11 @@ const GameState = {
     NAME_INPUT: 'NAME_INPUT',
     RENAME_INPUT: 'RENAME_INPUT',
     LEADERBOARD: 'LEADERBOARD',
-    CLOUD_RESTORE: 'CLOUD_RESTORE', // ввод ника для восстановления прогресса из облака
-    STAGE_CLEAR: 'STAGE_CLEAR',     // итоги 3 этапов после входа в портал (кнопка «в хаб»)
-    CHAPTER_SELECT: 'CHAPTER_SELECT', // выбор главы (между хабом и забегом)
+    CLOUD_RESTORE: 'CLOUD_RESTORE',
+    STAGE_CLEAR: 'STAGE_CLEAR',
+    CHAPTER_SELECT: 'CHAPTER_SELECT',
 };
 
-// Главы. Каждая глава — забег из 3 этапов. Карточка рисуется вектором (без фоновой
-// картинки): hue задаёт неон-тему. id используется как this.currentChapter в забеге.
-// Блокировка вычисляется из save.maxChapterUnlocked (id > unlocked → закрыта).
-//
-// Контент-поля (развилка по главам):
-//   floorKey/floorTint — текстура пола арены; если файла нет, берётся 'floor' с тинтом.
-//   floorMode          — 'tile' (бесшовное замощение, для паттерн-текстур) или
-//                        'stretch' (одна картинка на всю арену, для цельных сцен — без швов).
-//   enemyKey/goblinKey — спрайты рядовых врагов/гоблинов (фолбэк на ch1, если файла нет).
-//   boss1/2/3Key       — спрайты боссов 3 этапов (фолбэк на ch1, если файла нет).
-//   subwooferKey       — если задан, в главе спавнятся Сабвуферы (волна баса); иначе нет.
-//   mosherKey          — если задан, в главе спавнятся Мошеры (распад на мини при смерти).
-//   hypemanKey         — если задан, в главе спавнятся Хайпмены (аура +HP/реген союзникам).
-//   encircleEvent      — если true, раз за этап срабатывает событие «окружение» (кольцо мобов).
-//   hpMult/dmgMult/spawnMult/bossHpMult — множители сложности относительно главы 1.
-// Все *Key c фолбэком: глава играбельна ДО появления арта (см. _tex в scene.js).
 const CHAPTERS = [
     { id: 1, hue: 0x00e6ff,
       floorKey: 'floor', floorTint: null, floorMode: 'tile',
@@ -269,7 +201,6 @@ const CHAPTERS = [
 ];
 function getChapter(id) { return CHAPTERS.find(c => c.id === id) || CHAPTERS[0]; }
 
-// GamePhase enum (Game.h)
 const GamePhase = {
     PHASE_1: 'PHASE_1',
     CLEARING: 'CLEARING',
@@ -277,39 +208,29 @@ const GamePhase = {
     PHASE_3: 'PHASE_3',
 };
 
-// EnemyType enum (Enemy.h)
 const EnemyType = {
     NORMAL: 'NORMAL',
     FAST: 'FAST',
     TANK: 'TANK',
     BOSS: 'BOSS',
     GOBLIN: 'GOBLIN',
-    SUBWOOFER: 'SUBWOOFER', // глава 2+: медленный танк-колонка, бьёт радиальной волной баса
-    MOSHER: 'MOSHER',       // глава 2+: чейзер, при смерти распадается на мини-мошеров
-    MOSHERLING: 'MOSHERLING', // мелкий быстрый осколок мошера (не делится)
-    HYPEMAN: 'HYPEMAN',       // глава 2+: убегает, баффает соседних врагов аурой
+    SUBWOOFER: 'SUBWOOFER',
+    MOSHER: 'MOSHER',
+    MOSHERLING: 'MOSHERLING',
+    HYPEMAN: 'HYPEMAN',
 };
 
-// Boss / Goblin FSM states (Enemy.h)
 const BossState = { WALKING: 0, PREPARING: 1, JUMPING: 2, RECOVERING: 3 };
 const GoblinState = { WALKING: 0, PREPARING: 1, THROWING: 2, RECOVERING: 3 };
 
-// In-run upgrade icons (тексты названий/описаний — в i18n.js: upgrade_titles / upgrade_descs)
 const UPGRADE_ICONS = ['icon_fire', 'icon_dmg', 'icon_speed', 'icon_magnet', 'icon_hp', 'icon_blademail', 'icon_pierce'];
 
-// Легендарные карточки (золотая рамка, без этапов прокачки, выпадают реже обычных).
-// id 5 = блейдмейл, id 6 = прострел.
 const LEGENDARY_UPGRADE_IDS = [5, 6];
-// Шанс, что конкретная легендарная карта вообще попадёт в пул выбора при ап-левеле.
-// 0.13 даёт ~12% левел-апов, на которых показывается хотя бы одна легендарка
-// (с учётом последующего отбора 3 карт из пула). Понижено с 0.27 — легендарки реже.
 const LEGENDARY_CARD_CHANCE = 0.13;
 
-// Ability data (AbilitySelectUI.cpp). Названия — в i18n.js: ability_names.
 const ABILITY_COOLDOWNS = { 0: 25, 1: 15, 2: 12, 3: 14, 4: 16, 5: 14, 6: 15 };
 const ABILITY_ICONS = { '-10': 'ability_dash', 0: 'ability_invincible', 1: 'ability_slam', 2: 'ability_disc', 3: 'ability_laser', 4: 'ability_skull', 5: 'ability_sonic', 6: 'ability_shatter' };
 
-// Artifact info (ShopUI.cpp)
 const ARTIFACTS = [
     { name: 'BLOOD PACT', desc: 'Kill heals 2 HP', cost: 800 },
     { name: 'GLASS CANNON', desc: '+30% dmg, Max HP -20', cost: 1000 },
@@ -320,23 +241,17 @@ const ARTIFACTS = [
     { name: 'MAGNET CORE', desc: 'Infinite pickup range', cost: 5000 },
 ];
 
-// Артефакты как именованные биты маски save.permActiveArtifacts. Порядок битов
-// СОВПАДАЕТ с индексами массива ARTIFACTS выше и ARTIFACT_ICONS в shop.js — это
-// единый контракт: правя порядок, меняй согласованно во всех трёх местах. Геймплейный
-// код читает артефакты ТОЛЬКО через hasArtifact(save, ARTIFACT.X), без сырых сдвигов.
 const ARTIFACT = {
-    BLOOD_PACT:   1 << 0, // килл лечит 2 HP
-    GLASS_CANNON: 1 << 1, // +30% урон, макс. HP -20
-    ECHO_CHAMBER: 1 << 2, // пули рикошетят от стен
-    SOUL_LEECH:   1 << 3, // +0.5% крит за килл (макс +5%)
-    BERSERKER:    1 << 4, // HP<=40%: урон x1.5, без замедления после дэша
-    IRON_SKIN:    1 << 5, // первые 3 удара за забег блокируются
-    MAGNET_CORE:  1 << 6, // бесконечный радиус подбора
+    BLOOD_PACT:   1 << 0,
+    GLASS_CANNON: 1 << 1,
+    ECHO_CHAMBER: 1 << 2,
+    SOUL_LEECH:   1 << 3,
+    BERSERKER:    1 << 4,
+    IRON_SKIN:    1 << 5,
+    MAGNET_CORE:  1 << 6,
 };
-// Активен ли артефакт у игрока (save.permActiveArtifacts — битовая маска активных, макс 3).
 function hasArtifact(save, flag) { return (save.permActiveArtifacts & flag) !== 0; }
 
-// Texture manifest: key -> file (Game.cpp constructor)
 const TEXTURE_MANIFEST = [
     ['floor', 'floor.jpg'],
     ['menu_bg', 'menu_bg.jpg'],
@@ -353,8 +268,6 @@ const TEXTURE_MANIFEST = [
     ['boss2', 'boss2.png'],
     ['boss3', 'boss3.png'],
     ['portal', 'portal.png'],
-    // Текстуры глав 2/3 (опциональны: 404 заглушается в preload через loaderror).
-    // Пока файлов нет — движок использует фолбэк на ассеты главы 1 (см. _tex / floorTint).
     ['floor2', 'floor2.jpg'],
     ['enemy2', 'enemy2.png'],
     ['enemyV2', 'enemyV2.png'],
@@ -390,8 +303,6 @@ const TEXTURE_MANIFEST = [
     ['icon_hp', 'icon_hp.png'],
     ['icon_blademail', 'icon_blademail.png'],
     ['icon_pierce', 'icon_pierce.png'],
-    // Иконки артефактов (магазин). Файлы опциональны: если их нет, карточка
-    // рисуется без иконки (graceful fallback в shop.js через textures.exists).
     ['art_bloodpact', 'art_bloodpact.png'],
     ['art_glasscannon', 'art_glasscannon.png'],
     ['art_echo', 'art_echo.png'],
@@ -399,7 +310,6 @@ const TEXTURE_MANIFEST = [
     ['art_berserker', 'art_berserker.png'],
     ['art_ironskin', 'art_ironskin.png'],
     ['art_magnetcore', 'art_magnetcore.png'],
-    // Иконки узлов дерева навыков (индекс = branch*3 + row).
     ['node_damage', 'node_damage.png'],
     ['node_crit', 'node_crit.png'],
     ['node_multishot', 'node_multishot.png'],
@@ -411,5 +321,4 @@ const TEXTURE_MANIFEST = [
     ['node_magnet', 'node_magnet.png'],
 ];
 
-// Player walk animation frames: dir -> [6 keys] (Game.cpp constructor)
 const ANIM_DIRS = ['front', 'back', 'left', 'right'];

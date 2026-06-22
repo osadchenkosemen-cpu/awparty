@@ -1,8 +1,4 @@
-// HUD — порт src/HUD.cpp. Игровой интерфейс поверх мира (фикс. 1920x1080).
-// Все объекты создаются один раз и складываются в uiLayer; update() обновляет
-// значения и перерисовывает кулдауны способностей.
 
-// Orbitron — латиница/цифры (фирменный вид), Exo 2 — кириллица (Orbitron её не содержит).
 const FONT = 'Orbitron, "Exo 2", Arial';
 
 class HUD {
@@ -11,7 +7,7 @@ class HUD {
         this.uiW = C.VIEW_WIDTH;
         this.uiH = C.VIEW_HEIGHT;
         this.objects = [];
-        this.skillCounts = [0, 0, 0, 0, 0, 0, 0]; // 7 внутризабеговых апгрейдов (вкл. 2 легендарных)
+        this.skillCounts = [0, 0, 0, 0, 0, 0, 0];
         this._lastBossExists = false;
         this._build();
         this.setVisible(false);
@@ -23,37 +19,30 @@ class HUD {
         const W = this.uiW, H = this.uiH;
         const add = this._add.bind(this);
 
-        // --- XP BAR ---
         const xpWidth = W - 100;
         this.xpBg = add(this.scene.add.rectangle(50, 20, xpWidth, 25, 0x140028).setOrigin(0, 0).setStrokeStyle(3, 0x9600ff));
         this.xpFill = add(this.scene.add.rectangle(50, 20, 0, 25, 0x00ffff).setOrigin(0, 0));
         this.lvlText = add(this.scene.add.text(50, 55, 'LVL 1', { fontFamily: FONT, fontSize: '35px', color: '#ffff00', stroke: '#000', strokeThickness: 2 }).setOrigin(0, 0));
 
-        // --- HP BAR --- (над карточками способностей, по центру внизу)
         const hpW = 400;
-        const hpY = H - 166; // верх полосы: карточки абилок начинаются на H-124, оставляем зазор
+        const hpY = H - 166;
         this.hpBg = add(this.scene.add.rectangle(W / 2 - hpW / 2, hpY, hpW, 30, 0x280000).setOrigin(0, 0).setStrokeStyle(4, 0xff0032));
         this.hpFill = add(this.scene.add.rectangle(W / 2 - hpW / 2, hpY, hpW, 30, 0xff3232).setOrigin(0, 0));
         this.hpText = add(this.scene.add.text(W / 2, hpY + 15, 'HP 100 / 100', { fontFamily: FONT, fontSize: '24px', color: '#fff', stroke: '#000', strokeThickness: 2 }).setOrigin(0.5, 0.5));
 
-        // --- TIMER ---
         this.timerText = add(this.scene.add.text(W / 2, 90, '00:00', { fontFamily: FONT, fontSize: '50px', color: '#ff0096', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5, 0.5));
 
-        // --- COINS ---
         this.coinSprite = add(this.scene.add.sprite(W - 150, 60, 'coin').setOrigin(0, 0));
         this.coinSprite.setDisplaySize(35, 35);
         this.coinText = add(this.scene.add.text(W - 100, 55, '0', { fontFamily: FONT, fontSize: '35px', color: '#ffff00' }).setOrigin(0, 0));
 
-        // --- BOSS HP BAR ---
         const bW = 800;
         this.bossBg = add(this.scene.add.rectangle(W / 2 - bW / 2, 160, bW, 35, 0x280000, 200 / 255).setOrigin(0, 0).setStrokeStyle(4, 0xff0032));
         this.bossFill = add(this.scene.add.rectangle(W / 2 - bW / 2, 160, 0, 35, 0xff3232).setOrigin(0, 0));
         this.bossName = add(this.scene.add.text(W / 2, 135, 'THE OVERSEER', { fontFamily: FONT, fontSize: '30px', color: '#fff', stroke: '#000', strokeThickness: 2 }).setOrigin(0.5, 0.5));
         this.bossBarWidth = bW;
 
-        // --- SKILL CARDS (top-left) ---
-        // 7 карт: 5 стакаемых апгрейдов + 2 легендарных (блейдмейл/прострел, золотая рамка).
-        const iconKeys = UPGRADE_ICONS; // ['icon_fire','icon_dmg','icon_speed','icon_magnet','icon_hp','icon_blademail','icon_pierce']
+        const iconKeys = UPGRADE_ICONS;
         const cardColors = [0xff7800, 0xff3232, 0x00e6ff, 0xb400ff, 0x32ff64, 0xffd200, 0xffd200];
         this.skillCards = [];
         for (let i = 0; i < 7; i++) {
@@ -65,7 +54,6 @@ class HUD {
             this.skillCards.push({ bg, icon, stars });
         }
 
-        // --- ABILITY CARDS (снизу по центру, под HP-баром): [DASH][Q][E][R] ---
         const ABILITY_SLOTS = 4;
         const cardW = 88, cardH = 110, gap = 10;
         const totalW = ABILITY_SLOTS * cardW + (ABILITY_SLOTS - 1) * gap;
@@ -78,7 +66,7 @@ class HUD {
             const sy = startY;
             const bg = add(this.scene.add.rectangle(sx, sy, cardW, cardH, 0x0c0018, 215 / 255).setOrigin(0, 0).setStrokeStyle(2, 0x3c374b));
             const icon = add(this.scene.add.sprite(sx + cardW / 2, sy + cardH / 2 - 8, 'ability_dash').setOrigin(0.5, 0.5));
-            icon.setDisplaySize(52, 52); // безопасный размер по умолчанию (текстура 1024px)
+            icon.setDisplaySize(52, 52);
             icon.setVisible(false);
             const keyLabel = add(this.scene.add.text(sx + cardW / 2, sy + cardH - 24, keyLabels[i], { fontFamily: FONT, fontSize: '18px', color: '#00dcc3', stroke: '#000', strokeThickness: 1.5 }).setOrigin(0.5, 0));
             this.abilityCards.push({
@@ -88,44 +76,34 @@ class HUD {
                 cachedId: -2, color: 0x3c374b, onCooldown: false, elapsedPct: 1,
             });
 
-            // Значок «пробел» для слота рывка (slot 0) — порт HUD::render
             if (i === 0) {
                 const cx = sx + cardW / 2;
                 const cy = sy + cardH - 17;
                 const spaceOuter = add(this.scene.add.rectangle(cx, cy, 58, 14, 0x000000, 0).setOrigin(0.5, 0.5).setStrokeStyle(2, 0x00dcc3, 200 / 255));
                 const spaceInner = add(this.scene.add.rectangle(cx, cy + 2, 46, 6, 0x00dcc3, 60 / 255).setOrigin(0.5, 0.5));
-                keyLabel.setVisible(false); // у слота 0 текстовой метки нет
+                keyLabel.setVisible(false);
             }
         }
 
-        // Графика для кулдаунов (пироги + стрелки)
         this.fx = add(this.scene.add.graphics());
     }
 
     setVisible(v) {
         this.objects.forEach(o => o.setVisible(v));
         if (!v && this.fx) this.fx.clear();
-        // Общий show() показывает ВСЕ объекты HUD, в т.ч. условные (карточки скиллов
-        // в точке (0,0), иконки-заглушки способностей, полоса босса). Их видимость
-        // обычно задаётся в update(), который не вызывается в LEVEL_UP/ABILITY_SELECT,
-        // поэтому переприменяем корректное состояние сразу при показе.
         if (v) {
-            // Сброс кэша значений: при показе текст перерисуется даже если число не
-            // изменилось (например, после смены языка между забегами).
             this._lastLevel = this._lastHp = this._lastMaxHp = this._lastCoins = this._lastTimer = undefined;
             this._applyConditionalVisibility();
         }
     }
 
     _applyConditionalVisibility() {
-        // Иконки способностей: видны только у занятых слотов
         if (this.abilityCards) {
             for (const card of this.abilityCards) {
                 const hasAbility = (card.cachedId !== -1 && card.cachedId !== -2);
                 card.icon.setVisible(hasAbility);
             }
         }
-        // Карточки взятых скиллов (top-left): видны только при count > 0
         if (this.skillCards) {
             for (let i = 0; i < 7; i++) {
                 const show = this.skillCounts[i] > 0;
@@ -134,7 +112,6 @@ class HUD {
                 this.skillCards[i].stars.setVisible(show);
             }
         }
-        // Полоса HP босса: только если босс есть
         const b = !!this._lastBossExists;
         if (this.bossBg) { this.bossBg.setVisible(b); this.bossFill.setVisible(b); this.bossName.setVisible(b); }
     }
@@ -169,9 +146,8 @@ class HUD {
     update(player, totalCoins, bossExists, bossHpPct, timerStr, runPickCounts,
             equippedAbilities, abilityCooldowns, abilityMaxCooldowns) {
         const W = this.uiW, H = this.uiH;
-        this._lastBossExists = bossExists; // для переприменения видимости при show()
+        this._lastBossExists = bossExists;
 
-        // XP / level (бар обновляем всегда, текст — только при смене уровня)
         const xpPct = player.currentXP / player.xpToNextLevel;
         this.xpFill.setSize((W - 100) * clamp(xpPct, 0, 1), 25);
         if (this._lastLevel !== player.level) {
@@ -179,7 +155,6 @@ class HUD {
             this.lvlText.setText(t('hud_lvl') + ' ' + player.level);
         }
 
-        // HP (бар всегда; текст — только при изменении чисел)
         const hpPct = player.hp / player.maxHp;
         this.hpFill.setSize(400 * Math.max(0, hpPct), 30);
         const hpShown = Math.max(0, player.hp);
@@ -188,19 +163,16 @@ class HUD {
             this.hpText.setText(t('hud_hp') + ' ' + hpShown + ' / ' + player.maxHp);
         }
 
-        // Coins — только при изменении.
         if (this._lastCoins !== totalCoins) {
             this._lastCoins = totalCoins;
             this.coinText.setText('' + totalCoins);
         }
 
-        // Timer — строка MM:SS меняется раз в секунду, не каждый кадр.
         if (this._lastTimer !== timerStr) {
             this._lastTimer = timerStr;
             this.timerText.setText(timerStr);
         }
 
-        // Boss HP
         if (bossExists) {
             this.bossBg.setVisible(true); this.bossFill.setVisible(true); this.bossName.setVisible(true);
             this.bossFill.setSize(this.bossBarWidth * Math.max(0, bossHpPct), 35);
@@ -208,7 +180,6 @@ class HUD {
             this.bossBg.setVisible(false); this.bossFill.setVisible(false); this.bossName.setVisible(false);
         }
 
-        // Skill cards
         const cardW2 = 64, gap2 = 10;
         let col = 0;
         for (let i = 0; i < 7; i++) {
@@ -222,8 +193,6 @@ class HUD {
             const cy = 100;
             card.bg.setPosition(cx, cy).setVisible(true);
             card.icon.setPosition(cx + cardW2 / 2, cy + 26).setVisible(true);
-            // Легендарные (блейдмейл/прострел) не стакаются — помечаем золотой звездой,
-            // обычные показывают число взятий звёздочками (5 макс, далее «+»).
             let stars;
             if (LEGENDARY_UPGRADE_IDS.includes(i)) {
                 stars = '★';
@@ -237,8 +206,6 @@ class HUD {
             col++;
         }
 
-        // Ability cards
-        // slot 0 = DASH
         const slot0 = this.abilityCards[0];
         const dashActive = player.hasDashUnlocked;
         this._refreshCard(0, dashActive ? -10 : -1);
@@ -260,7 +227,6 @@ class HUD {
             card.elapsedPct = onCd ? (1 - clamp(curCd / maxCd, 0, 1)) : 1;
         }
 
-        // Перерисовать кулдауны
         this.fx.clear();
         for (const card of this.abilityCards) {
             const hasAbility = (card.cachedId !== -1 && card.cachedId !== -2);
@@ -286,7 +252,6 @@ class HUD {
                     this.fx.closePath();
                     this.fx.fillPath();
                 }
-                // стрелка
                 const angleDeg = card.elapsedPct * 360 - 90;
                 const ar = angleDeg * Math.PI / 180;
                 this.fx.lineStyle(3, 0xffffff, 230 / 255);
@@ -313,7 +278,6 @@ class HUD {
             const sc = 52 / b;
             card.icon.setScale(sc, sc);
             card.icon.setVisible(true);
-            // тонировка фона цветом способности
             const c = Phaser.Display.Color.IntegerToRGB(card.color);
             card.bg.setFillStyle(rgb(c.r / 10, c.g / 10, c.b / 10), 225 / 255);
             card.bg.setStrokeStyle(2, card.color);

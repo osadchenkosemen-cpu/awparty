@@ -1,12 +1,4 @@
-// scene_ui.js — меню, экраны и ввод MainScene (вынесено из scene.js).
-// Методы навешиваются на MainScene.prototype (класс объявлен в scene.js, грузится раньше).
-// Сюда входят: построение всех экранов (меню/лобби/настройки/рекорды/пауза/левелап/способности),
-// обработка мыши и клавиатуры, переходы по пунктам, смена языка/громкости, переименование игрока.
 
-// Экран настроек: пункты сгруппированы по категориям. Внутри rows — ЛОГИЧЕСКИЕ индексы
-// (та же нумерация, что в _settingsActivate/обработчиках ввода): 0 хардкор, 1 окно,
-// 2 звук, 3 эффекты, 4 язык, 5 имя, 6 облако, 7 назад. SETTINGS_ORDER — порядок обхода
-// стрелками (визуальный сверху вниз). Пункт 7 (Назад) — кнопка под панелью.
 const SETTINGS_GROUPS = [
     { title: 'set_grp_game',    rows: [0] },
     { title: 'set_grp_audio',   rows: [2, 3] },
@@ -15,7 +7,6 @@ const SETTINGS_GROUPS = [
 ];
 const SETTINGS_ORDER = [0, 2, 3, 1, 4, 5, 6, 7];
 
-    // ===================== МЕНЮ / UI =====================
 MainScene.prototype._clearMenu = function() { this.menuObjs.forEach(o => o.destroy()); this.menuObjs = []; }
 MainScene.prototype._mAdd = function(o) { this.addUI(o); this.menuObjs.push(o); return o; }
 MainScene.prototype._mText = function(x, y, str, size, color, ox, oy, stroke, strokeW) {
@@ -24,8 +15,6 @@ MainScene.prototype._mText = function(x, y, str, size, color, ox, oy, stroke, st
         return this._mAdd(t);
     }
 
-    // Обновить только стиль выделения в простом списочном меню (MENU/LOBBY/PAUSE),
-    // не пересоздавая текстовые объекты. Вызывается при перемещении выбора мышью/клавишами.
 MainScene.prototype._restyleList = function(idx) {
         const L = this._listItems;
         if (!L) return;
@@ -41,7 +30,7 @@ MainScene.prototype._restyleList = function(idx) {
 
 MainScene.prototype.rebuildMenu = function() {
         this._clearMenu();
-        this._listItems = null; // ссылки на тексты списочного меню (пересоздаются в _buildX)
+        this._listItems = null;
         if (this.shop) this.shop.hide();
         const st = this.currentState;
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
@@ -52,7 +41,6 @@ MainScene.prototype.rebuildMenu = function() {
         const hudVisible = (st === GameState.PLAYING || st === GameState.PAUSED || st === GameState.LEVEL_UP || st === GameState.ABILITY_SELECT);
         this.hud.setVisible(hudVisible);
 
-        // Скрыть динамические оверлеи вне активной игры
         if (st !== GameState.PLAYING) {
             this.phaseText.setVisible(false);
             this.phaseOverlay.setVisible(false);
@@ -110,7 +98,6 @@ MainScene.prototype._buildLobby = function() {
         this._listItems = { objs, labels: items, selSize: 75, baseSize: 60 };
     }
 
-    // Геометрия карточек выбора главы (общая для рендера и хит-теста мыши).
 MainScene.prototype._chapterCardRect = function(i) {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
         const cardW = 420, cardH = 540, gap = 60;
@@ -130,17 +117,14 @@ MainScene.prototype._buildChapterSelect = function() {
             const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
             const sel = i === this.selectedChapterIndex;
             const locked = ch.id > this.save.maxChapterUnlocked;
-            // Тема карточки: цвет главы; заблокированная — серая.
             const hue = locked ? 0x39394a : ch.hue;
             const fill = locked ? 0x16161e : Phaser.Display.Color.IntegerToColor(hue).darken(70).color;
 
-            // Подложка-«карта» (вектор) + рамка. Выбранная — ярче и толще.
             this._mAdd(this.add.rectangle(cx, cy, r.w, r.h, fill, 1).setOrigin(0.5, 0.5)
                 .setStrokeStyle(sel ? 6 : 3, hue, locked ? 0.6 : 1));
 
             const hexHue = '#' + hue.toString(16).padStart(6, '0');
             const titleCol = locked ? '#6a6a78' : '#ffffff';
-            // «ГЛАВА» + номер — единый блок по центру карточки.
             this._mText(cx, cy - 55, t('chapter_label'), 38, locked ? '#56566a' : hexHue, 0.5, 0.5, '#000', 2);
             this._mText(cx, cy + 20, '' + ch.id, 110, titleCol, 0.5, 0.5, locked ? '#000' : hexHue, 3);
 
@@ -171,16 +155,13 @@ MainScene.prototype._buildSettings = function() {
             if (i === 6) return t('set_cloud_open');
             return '';
         };
-        // Пункты со стрелками < > (меняются влево/вправо): окно, звук, эффекты, язык.
         const isAdjustable = (i) => i >= 1 && i <= 4;
 
-        // Геометрия панели и строк.
         const panelW = 780, panelX = W / 2 - panelW / 2, padX = 46;
         const rowH = 56, headH = 50, grpGap = 12, innerPad = 22;
         let total = innerPad * 2 - grpGap;
         for (const g of SETTINGS_GROUPS) total += headH + g.rows.length * rowH + grpGap;
         const panelTop = H * 0.135;
-        // Панель (рисуем первой — она под текстом).
         this._mAdd(this.add.rectangle(panelX, panelTop, panelW, total, 0x0c0820, 0.82)
             .setOrigin(0, 0).setStrokeStyle(2, 0x6a4aa0));
 
@@ -199,7 +180,6 @@ MainScene.prototype._buildSettings = function() {
                     sel ? '#ffffff' : '#cfe9e0', 0, 0.5, '#000', 2);
                 const row = { idx, x: rx, y, w: rw, h: rowH };
                 if (isAdjustable(idx)) {
-                    // Стрелки < > — отдельные кликабельные элементы (правый край строки).
                     const aSize = sel ? 34 : 30, aCol = '#7ad6ff', vCol = sel ? '#ffe45a' : '#ffffff';
                     const gR = this._mText(panelX + panelW - padX, cy, '>', aSize, aCol, 1, 0.5, '#000', 2);
                     const vMid = this._mText(gR.x - gR.width - 18, cy, valueOf(idx), sel ? 32 : 28, vCol, 1, 0.5, '#000', 2);
@@ -216,7 +196,6 @@ MainScene.prototype._buildSettings = function() {
             y += grpGap;
         }
 
-        // Кнопка «Назад» (логический индекс 7) — под панелью.
         const bw = 300, bh = 58, bx = W / 2 - bw / 2, by = panelTop + total + 26;
         const bsel = this.selectedSettingIndex === 7;
         this._mAdd(this.add.rectangle(bx, by, bw, bh, bsel ? 0x2a1840 : 0x140a28, 1)
@@ -226,7 +205,6 @@ MainScene.prototype._buildSettings = function() {
 
         if (this.cheatMessageTimer > 0) this._mText(50, H - 110, this.cheatMessage, 28, '#ffff00', 0, 0);
 
-        // Кнопка «Сбросить персонажа» — правый нижний угол (мышь). Имя/настройки сохраняются.
         const rr = this._settingsResetRect();
         const confirm = !!this._resetConfirm, hov = !!this._resetHover;
         this._mAdd(this.add.rectangle(rr.x, rr.y, rr.w, rr.h, confirm ? 0x4a1020 : 0x1a1030, 1)
@@ -235,13 +213,11 @@ MainScene.prototype._buildSettings = function() {
             confirm ? 22 : 24, confirm ? '#ff9aa0' : (hov ? '#ffffff' : '#d8c0ee'), 0.5, 0.5);
     }
 
-    // Прямоугольник кнопки сброса персонажа (правый нижний угол экрана настроек).
 MainScene.prototype._settingsResetRect = function() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT, w = 380, h = 56;
         return { x: W - w - 30, y: H - h - 30, w: w, h: h };
     }
 
-    // Клик по кнопке сброса: первый раз — подтверждение, второй — собственно сброс.
 MainScene.prototype._settingsResetClick = function() {
         this.audio.play('sfx_menu_click');
         if (!this._resetConfirm) { this._resetConfirm = true; this._resetConfirmTimer = 4; this.rebuildMenu(); return; }
@@ -257,28 +233,23 @@ MainScene.prototype._buildLeaderboard = function() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x000000, 160 / 255).setOrigin(0, 0));
         this._mText(W / 2, 50, t('lb_title'), 100, '#ffd700', 0.5, 0, '#b40050', 5);
-        // Глава (←/→) + режим (↑/↓) — ниже заголовка, чтобы не налезало на «РЕКОРДЫ».
         this._mText(W / 2, 200, '◀  ' + t('lb_chapter') + ' ' + this.lbChapter + '  ▶', 46, '#ffd700', 0.5, 0.5, '#000', 3);
         const hc = this.lbView === 'hardcore';
         this._mText(W / 2, 258, (hc ? t('lb_hardcore') : t('lb_normal')), 40, hc ? '#ff5050' : '#00ffc8', 0.5, 0.5, '#000', 3);
         const rowY0 = 330, rowH = 54;
         const colX = [W * 0.08, W * 0.16, W * 0.50, W * 0.66, W * 0.80];
-        // Доска показывается отсортированной по текущему виду (онлайн уже приходит в этом
-        // порядке — пересортировка идемпотентна; оффлайн — пересортировка локальных записей).
         const board = (this.leaderboards[this.lbView][this.lbChapter] || []).slice()
             .sort(this.lbSort === 'score' ? lbCompareScore : lbCompare);
         const hdrs = [t('lb_col_num'), t('lb_col_name'), t('lb_col_time'), t('lb_col_score'), t('lb_col_date')];
         for (let i = 0; i < 5; i++) {
-            // Колонки «время» (2) и «очки» (3) — переключатели сортировки; активная помечается ▼.
             const active = (i === 2 && this.lbSort === 'time') || (i === 3 && this.lbSort === 'score');
             this._mText(colX[i], rowY0 - 38, hdrs[i] + (active ? ' ▼' : ''), 26, active ? '#ffd700' : '#00ffc8', 0, 0);
         }
-        // Зоны клика для сортировки (по заголовкам ВРЕМЯ/ОЧКИ) — читаются в onPointerDown.
         this._lbSortRects = {
             time:  { x: colX[2] - 10, y: rowY0 - 44, w: 170, h: 40 },
             score: { x: colX[3] - 10, y: rowY0 - 44, w: 170, h: 40 },
         };
-        const hiName = this._pendingHighlight || ''; // подсветка «своей» записи по имени (устойчива к сортировке)
+        const hiName = this._pendingHighlight || '';
         for (let i = 0; i < 10; i++) {
             const y = rowY0 + i * rowH;
             const e = board[i];
@@ -298,8 +269,6 @@ MainScene.prototype._buildLeaderboard = function() {
         this._mText(W / 2, H * 0.92, t('lb_hint_back'), 36, '#00ffc8', 0.5, 0);
     }
 
-// --- Сбор «билда» забега для паузы/итогов: списки иконок ---
-// Карты прокачки (взятые), с бейджем кол-ва (легендарные — золотая звезда).
 MainScene.prototype._runCards = function() {
         const out = [];
         for (let id = 0; id < 7; id++) {
@@ -310,7 +279,6 @@ MainScene.prototype._runCards = function() {
         }
         return out;
     }
-// Способности в слотах.
 MainScene.prototype._runAbilities = function() {
         const out = [];
         for (let i = 0; i < 3; i++) {
@@ -319,7 +287,6 @@ MainScene.prototype._runAbilities = function() {
         }
         return out;
     }
-// Активные артефакты (битовая маска).
 MainScene.prototype._runArtifacts = function() {
         const out = [];
         for (let i = 0; i < 7; i++) {
@@ -327,7 +294,6 @@ MainScene.prototype._runArtifacts = function() {
         }
         return out;
     }
-// Подписанный ряд иконок по центру cx, начиная с y. Возвращает следующий y.
 MainScene.prototype._buildIconRow = function(label, cx, y, entries) {
         const ICON = 68, GAP = 18;
         this._mText(cx, y, label, 24, '#9a96b0', 0.5, 0, '#000', 2);
@@ -357,12 +323,10 @@ MainScene.prototype._buildPause = function() {
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x0a001e, 205 / 255).setOrigin(0, 0));
         this._mText(W / 2, 70, t('pause_title'), 92, '#ffffff', 0.5, 0.5, '#000', 3);
 
-        // Вертикальная полоска-разделитель по центру между статами и билдом.
         const midX = W / 2, dTop = 150, dH = 415;
-        this._mAdd(this.add.rectangle(midX, dTop, 12, dH, 0x9664c8, 0.16).setOrigin(0.5, 0)); // свечение
-        this._mAdd(this.add.rectangle(midX, dTop, 3, dH, 0xc8a0ff, 0.9).setOrigin(0.5, 0));   // линия
+        this._mAdd(this.add.rectangle(midX, dTop, 12, dH, 0x9664c8, 0.16).setOrigin(0.5, 0));
+        this._mAdd(this.add.rectangle(midX, dTop, 3, dH, 0xc8a0ff, 0.9).setOrigin(0.5, 0));
 
-        // Статы — слева от центра (значения выровнены к разделителю).
         const lx = midX - 410, vx = midX - 60;
         this._mText((lx + vx) / 2, 150, t('pause_stats'), 30, '#00ffc8', 0.5, 0.5, '#000', 2);
         const fr = p.shootCooldown > 0 ? 1 / p.shootCooldown : 0;
@@ -383,7 +347,6 @@ MainScene.prototype._buildPause = function() {
             sy += 44;
         }
 
-        // Билд — справа от центра (иконки карт/способностей/артефактов).
         const cx = midX + 300;
         this._mText(cx, 150, t('pause_build'), 30, '#00ffc8', 0.5, 0.5, '#000', 2);
         let by = 200;
@@ -391,7 +354,6 @@ MainScene.prototype._buildPause = function() {
         by = this._buildIconRow(t('build_abilities'), cx, by, this._runAbilities());
         by = this._buildIconRow(t('build_artifacts'), cx, by, this._runArtifacts());
 
-        // Меню — позиции НЕ менять (на них завязан хит-тест в onPointer*).
         const items = [t('pause_resume'), t('pause_restart'), t('pause_quit')];
         const objs = [];
         for (let i = 0; i < items.length; i++) {
@@ -407,7 +369,6 @@ MainScene.prototype._buildGameOver = function() {
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x1e000a, 225 / 255).setOrigin(0, 0));
         this._mText(W / 2, 90, t('gameover_title'), 96, '#ffffff', 0.5, 0.5, '#ff0033', 4);
 
-        // Сводка: счёт / время / уровень / убито / монет за забег.
         const cells = [
             [t('summary_score'), fmtNum(this.runScore || 0)],
             [t('summary_time'), formatTime(this.survivalTimer)],
@@ -422,37 +383,31 @@ MainScene.prototype._buildGameOver = function() {
             this._mText(x, 254, cells[i][1], 52, '#ffd700', 0.5, 0.5, '#3a2a00', 3);
         }
 
-        // Билд забега.
         this._mText(W / 2, 340, t('pause_build'), 28, '#00ffc8', 0.5, 0, '#000', 2);
         let by = 384;
         by = this._buildIconRow(t('build_cards'), W / 2, by, this._runCards());
         by = this._buildIconRow(t('build_abilities'), W / 2, by, this._runAbilities());
         by = this._buildIconRow(t('build_artifacts'), W / 2, by, this._runArtifacts());
 
-        // Управление.
         this._mText(W / 2, H - 150, t('gameover_hint'), 36, '#dcd7eb', 0.5, 0.5, '#000', 2);
         this._mText(W / 2, H - 95, t('gameover_records'), 30, '#00ffc8', 0.5, 0.5);
     }
 
-    // Прямоугольник кнопки «ПЕРЕЙТИ В ХАБ» на экране итогов (для отрисовки и кликов).
 MainScene.prototype._stageClearHubRect = function() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
         const w = 540, h = 96;
         return { x: W / 2 - w / 2, y: H - 150, w, h };
     }
 
-    // Экран после входа в портал: итоги 3 пройденных этапов + кнопка в хаб.
 MainScene.prototype._buildStageClear = function() {
         const W = C.VIEW_WIDTH, H = C.VIEW_HEIGHT;
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x06001a, 235 / 255).setOrigin(0, 0));
         this._mText(W / 2, 70, t('stageclear_title'), 92, '#00e6ff', 0.5, 0.5, '#c800ff', 4);
         this._mText(W / 2, 138, t('stageclear_sub'), 30, '#bfb8e0', 0.5, 0.5, '#000', 2);
-        // Глобальное место в таблице главы (только онлайн; приходит асинхронно после submit).
         if (this._lastRank != null) {
             this._mText(W / 2, 180, t('lb_your_place') + '  #' + this._lastRank, 40, '#ffd700', 0.5, 0.5, '#000', 3);
         }
 
-        // Таблица: строка-заголовок + 3 этапа + ИТОГО (счёт — приоритетная метрика).
         const cols = ['', t('summary_score'), t('summary_time'), t('summary_kills'), t('summary_coins')];
         const colX = [W / 2 - 560, W / 2 - 230, W / 2 + 20, W / 2 + 260, W / 2 + 480];
         let y = 210;
@@ -470,7 +425,6 @@ MainScene.prototype._buildStageClear = function() {
             this._mText(colX[4], y, '' + s.coins, 40, '#ffd700', 0.5, 0.5, '#3a2a00', 2);
             y += 56;
         }
-        // Разделитель + ИТОГО.
         this._mAdd(this.add.rectangle(W / 2, y - 6, 1280, 2, 0x3a3060, 1).setOrigin(0.5, 0.5));
         y += 30;
         this._mText(colX[0], y, t('stageclear_total'), 38, '#ff64c8', 0.5, 0.5, '#000', 2);
@@ -479,14 +433,12 @@ MainScene.prototype._buildStageClear = function() {
         this._mText(colX[3], y, '' + tot.kills, 42, '#ffffff', 0.5, 0.5, '#000', 2);
         this._mText(colX[4], y, '' + tot.coins, 42, '#ffd700', 0.5, 0.5, '#3a2a00', 2);
 
-        // Билд забега.
         this._mText(W / 2, y + 70, t('pause_build'), 28, '#00ffc8', 0.5, 0, '#000', 2);
         let by = y + 112;
         by = this._buildIconRow(t('build_cards'), W / 2, by, this._runCards());
         by = this._buildIconRow(t('build_abilities'), W / 2, by, this._runAbilities());
         by = this._buildIconRow(t('build_artifacts'), W / 2, by, this._runArtifacts());
 
-        // Кнопка «ПЕРЕЙТИ В ХАБ».
         const r = this._stageClearHubRect();
         this._mAdd(this.add.rectangle(r.x + r.w / 2, r.y + r.h / 2, r.w, r.h, 0x14003c, 1)
             .setOrigin(0.5, 0.5).setStrokeStyle(3, 0x00e6ff));
@@ -500,7 +452,6 @@ MainScene.prototype._buildNameInput = function() {
         this._mText(W / 2, H * 0.36, t('name_score') + '  ' + fmtNum(this.runScore) + '    ' + t('name_time') + '  ' + formatTime(this.survivalTimer), 46, '#00ffc8', 0.5, 0.5, '#000', 3);
         this._mText(W / 2, H * 0.48, t('name_enter'), 38, '#dcd7eb', 0.5, 0.5, '#000', 2);
 
-        // Поле ввода + текст с курсором-подчёркиванием.
         const boxW = 760, boxH = 96, boxY = H * 0.58;
         const errored = !!this._nameError;
         this._mAdd(this.add.rectangle(W / 2, boxY, boxW, boxH, 0x140028, 1).setOrigin(0.5, 0.5).setStrokeStyle(3, errored ? 0xff3264 : 0x9600ff));
@@ -538,7 +489,6 @@ MainScene.prototype._buildLevelUp = function() {
             const uId = this.levelUpIds[i];
             const cx = W / 2 + (i - 1) * 450;
             const cy = H / 2 + 50;
-            // Легендарные карты — золотая рамка/заголовок и бейдж, без звёзд-этапов.
             const isLegendary = LEGENDARY_UPGRADE_IDS.includes(uId);
             const fill = isLegendary ? 0x2a2000 : 0x140028;
             const strokeCol = isLegendary ? 0xffd200 : 0x9600ff;
@@ -622,7 +572,6 @@ MainScene.prototype._highlightAbility = function() {
         }
     }
 
-    // ===================== ВВОД =====================
 MainScene.prototype.onPointerMove = function(p) {
         const st = this.currentState;
         const x = p.x, y = p.y;
@@ -636,7 +585,6 @@ MainScene.prototype.onPointerMove = function(p) {
         } else if (st === GameState.SETTINGS) {
             let ns = -1;
             if (this._settingsRows) for (const r of this._settingsRows) if (hit(r.x, r.y, r.w, r.h)) ns = r.idx;
-            // Ховер кнопки сброса (правый нижний угол).
             const rr = this._settingsResetRect();
             const rh = (x >= rr.x && x <= rr.x + rr.w && y >= rr.y && y <= rr.y + rr.h);
             let changed = false;
@@ -734,7 +682,6 @@ MainScene.prototype._chooseAbility = function(id) {
             }
         }
         this.pendingAbilityCount = 0;
-        // Задержка перед стрельбой: клик по карте не должен сразу приводить к выстрелу.
         this.player.currentCooldown = Math.max(this.player.currentCooldown, 0.2);
         this.setState(GameState.PLAYING);
     }
@@ -759,7 +706,6 @@ MainScene.prototype._lobbyActivate = function() {
         else if (i === 1) { this.shop.reset(); this.setState(GameState.SHOP); }
         else if (i === 2) { this.saveGame(); this.setState(GameState.MENU); }
     }
-    // Выбор главы: заблокированная — звук-отказ; доступная — старт забега в этой главе.
 MainScene.prototype._chapterActivate = function(i) {
         const ch = CHAPTERS[i];
         if (!ch) return;
@@ -782,8 +728,6 @@ MainScene.prototype._settingsActivate = function() {
         else if (i === 7) { this.saveGame(); this.setState(GameState.MENU); }
     }
 
-    // Изменить параметр стрелками < / > (dir: -1 влево, +1 вправо). Для бинарных
-    // (окно/язык) направление неважно — переключение.
 MainScene.prototype._settingsAdjust = function(idx, dir) {
         const s = this.save;
         if (idx === 1) { this.audio.play('sfx_menu_click'); s.isFullscreen = !s.isFullscreen; if (s.isFullscreen) { if (!this.scale.isFullscreen) this.scale.startFullscreen(); } else if (this.scale.isFullscreen) this.scale.stopFullscreen(); this.saveGame(); this.rebuildMenu(); }
@@ -792,7 +736,6 @@ MainScene.prototype._settingsAdjust = function(idx, dir) {
         else if (idx === 4) { this._toggleLanguage(); }
     }
 
-    // Переключить язык интерфейса en<->ru, применить и сохранить.
 MainScene.prototype._toggleLanguage = function() {
         const s = this.save;
         s.language = (s.language === 'ru') ? 'en' : 'ru';
@@ -824,7 +767,6 @@ MainScene.prototype._confirmRename = function() {
         this._renameBusy = true;
         this._renameError = '';
         this.rebuildMenu();
-        // Удалённо (мёрж по лучшему времени), затем локально.
         RemoteLeaderboard.rename(oldName, typed, (ok) => {
             if (this.currentState !== GameState.RENAME_INPUT) return;
             this._renameBusy = false;
@@ -837,12 +779,11 @@ MainScene.prototype._confirmRename = function() {
         });
     }
 
-    // Переименовать игрока в локальном кэше обеих таблиц; слить дубликаты по лучшему времени.
 MainScene.prototype._applyLocalRename = function(oldName, newName) {
         for (const mode of ['normal', 'hardcore']) {
             for (let c = 1; c <= CHAPTERS.length; c++) {
                 const src = this.leaderboards[mode][c] || [];
-                const merged = []; // лучшая запись на имя
+                const merged = [];
                 for (const raw of src) {
                     if (!raw || (raw.score <= 0 && raw.time <= 0)) continue;
                     const e = Object.assign({}, raw);
@@ -860,7 +801,6 @@ MainScene.prototype._applyLocalRename = function(oldName, newName) {
         }
     }
 
-    // --- Облачное восстановление прогресса по нику ---
 MainScene.prototype._openCloudRestore = function() {
         if (!CloudSave.configured()) { this.cheatMessage = t('cloud_offline'); this.cheatMessageTimer = 3; this.rebuildMenu(); return; }
         this.cloudInput = this.save.playerName || '';
@@ -889,7 +829,7 @@ MainScene.prototype._buildCloudRestore = function() {
 
 MainScene.prototype._confirmCloudRestore = function() {
         if (this._cloudBusy) return;
-        if (this._cloudMsg) { this.setState(GameState.SETTINGS); return; } // уже восстановлено — выходим
+        if (this._cloudMsg) { this.setState(GameState.SETTINGS); return; }
         const typed = this.cloudInput.trim();
         if (!typed) { this._cloudError = t('err_enter_name'); this.rebuildMenu(); return; }
         if (!CloudSave.configured()) { this._cloudError = t('cloud_offline'); this.rebuildMenu(); return; }
@@ -904,7 +844,6 @@ MainScene.prototype._confirmCloudRestore = function() {
         });
     }
 
-    // Изменить громкость на dir*10 (с обёрткой 0..100), применить к аудио и сохранить.
 MainScene.prototype._adjustVolume = function(which, dir) {
         const s = this.save;
         if (which === 'sound') {
@@ -913,7 +852,7 @@ MainScene.prototype._adjustVolume = function(which, dir) {
         } else {
             s.effectsVolume = (s.effectsVolume + dir * 10 + 110) % 110;
             this.audio.sfxVolume = s.effectsVolume / 100;
-            this.audio.play('sfx_menu_click'); // звуковой предпросмотр громкости SFX
+            this.audio.play('sfx_menu_click');
         }
         this.saveGame();
         this.rebuildMenu();
@@ -928,16 +867,14 @@ MainScene.prototype._pauseActivate = function() {
 
 MainScene.prototype.onKeyDown = function(e) {
         const st = this.currentState;
-        const code = e.code; // 'KeyW' и т.п.
+        const code = e.code;
         const up = (code === 'KeyW' || code === 'ArrowUp');
         const down = (code === 'KeyS' || code === 'ArrowDown');
         const left = (code === 'KeyA' || code === 'ArrowLeft');
         const right = (code === 'KeyD' || code === 'ArrowRight');
         const enter = (code === 'Enter' || code === 'Space');
         const esc = (code === 'Escape');
-        const pauseKey = (code === 'KeyP' || code === 'Escape'); // пауза/возобновление: P или ESC.
-        // Примечание: в фуллскрине браузер по ESC дополнительно выходит из полноэкранного
-        // режима (этого JS не отменить) — пауза при этом всё равно откроется.
+        const pauseKey = (code === 'KeyP' || code === 'Escape');
 
         if (st === GameState.MENU) {
             if (up) { this.selectedMenuIndex = (this.selectedMenuIndex + 2) % 3; this._restyleList(this.selectedMenuIndex); }
@@ -967,13 +904,11 @@ MainScene.prototype.onKeyDown = function(e) {
                 pos = (pos + (down ? 1 : SETTINGS_ORDER.length - 1)) % SETTINGS_ORDER.length;
                 this.selectedSettingIndex = SETTINGS_ORDER[pos]; this.rebuildMenu();
             }
-            // ←/→ меняют параметры со стрелками (окно/звук/эффекты/язык) — как клик по < >.
             if ((left || right) && this.selectedSettingIndex >= 1 && this.selectedSettingIndex <= 4) {
                 this._settingsAdjust(this.selectedSettingIndex, left ? -1 : +1);
             }
             if (enter) this._settingsActivate();
             if (esc) { this.saveGame(); this.setState(GameState.MENU); }
-            // Чит-код 'givecoinz'
             if (e.key && e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
                 this.cheatBuffer = (this.cheatBuffer + e.key.toLowerCase()).slice(-32);
                 if (this.cheatBuffer.indexOf('givecoinz') !== -1) {
@@ -983,16 +918,15 @@ MainScene.prototype.onKeyDown = function(e) {
             }
         } else if (st === GameState.LEADERBOARD) {
             const nch = CHAPTERS.length;
-            if (left) this._setLbBoard(this.lbView, ((this.lbChapter - 2 + nch) % nch) + 1);   // пред. глава (цикл)
-            if (right) this._setLbBoard(this.lbView, (this.lbChapter % nch) + 1);              // след. глава (цикл)
-            if (up || down) this._setLbBoard(this.lbView === 'normal' ? 'hardcore' : 'normal', this.lbChapter); // режим
-            if (code === 'Tab') { this._setLbSort(this.lbSort === 'time' ? 'score' : 'time'); if (e.preventDefault) e.preventDefault(); } // сортировка время/очки
+            if (left) this._setLbBoard(this.lbView, ((this.lbChapter - 2 + nch) % nch) + 1);
+            if (right) this._setLbBoard(this.lbView, (this.lbChapter % nch) + 1);
+            if (up || down) this._setLbBoard(this.lbView === 'normal' ? 'hardcore' : 'normal', this.lbChapter);
+            if (code === 'Tab') { this._setLbSort(this.lbSort === 'time' ? 'score' : 'time'); if (e.preventDefault) e.preventDefault(); }
             if (esc || code === 'Enter') this.setState(this.leaderboardFromMenu ? GameState.MENU : GameState.LOBBY);
         } else if (st === GameState.NAME_INPUT) {
             if (code === 'Backspace') { this.nameInput = this.nameInput.slice(0, -1); this._nameError = ''; this.rebuildMenu(); if (e.preventDefault) e.preventDefault(); }
             else if (code === 'Enter' || code === 'Escape') { this._confirmNameInput(); }
             else if (e.key && e.key.length === 1) {
-                // Любой печатный символ (вкл. кириллицу), кроме управляющих и DEL.
                 const cc = e.key.charCodeAt(0);
                 if (cc >= 32 && cc !== 127 && this.nameInput.length < 20) { this.nameInput += e.key; this._nameError = ''; this.rebuildMenu(); }
             }
@@ -1002,7 +936,6 @@ MainScene.prototype.onKeyDown = function(e) {
             else if (code === 'Escape') { this.audio.play('sfx_menu_click'); this.setState(GameState.SETTINGS); }
             else if (code === 'Enter') { this._confirmRename(); }
             else if (e.key && e.key.length === 1) {
-                // Любой печатный символ (вкл. кириллицу), кроме управляющих и DEL.
                 const cc = e.key.charCodeAt(0);
                 if (cc >= 32 && cc !== 127 && this.renameInput.length < 20) { this.renameInput += e.key; this._renameError = ''; this.rebuildMenu(); }
             }

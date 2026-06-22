@@ -8,7 +8,6 @@ module.exports = defineConfig({
     fullyParallel: true,
     reporter: process.env.CI ? 'github' : 'list',
     use: { baseURL: 'http://localhost:' + PORT },
-    // Поднимаем свой статический сервер (без внешних зависимостей) на время тестов.
     webServer: {
         command: 'node scripts/serve.js',
         url: 'http://localhost:' + PORT + '/index.html',

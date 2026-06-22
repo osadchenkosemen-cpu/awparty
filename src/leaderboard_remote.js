@@ -1,6 +1,3 @@
-// RemoteLeaderboard — общая онлайн-таблица рекордов через Supabase REST API.
-// Без библиотек: обычный fetch к /rest/v1/leaderboard.
-// Если ключи в config.js не заданы — configured() == false, игра остаётся на localStorage.
 
 const RemoteLeaderboard = {
     configured() { return !!(SUPABASE_URL && SUPABASE_ANON_KEY); },
@@ -13,8 +10,6 @@ const RemoteLeaderboard = {
         };
     },
 
-    // Топ N доски (mode, chapter). sort='score' → по очкам (desc), при равенстве время (asc);
-    // иначе по времени (asc), при равенстве очки (desc). cb(entries|null) — null при ошибке/оффлайне.
     fetchTop(limit, mode, chapter, sort, cb) {
         if (!this.configured()) { cb(null); return; }
         const order = (sort === 'score') ? 'score.desc,time.asc' : 'time.asc,score.desc';
@@ -38,7 +33,6 @@ const RemoteLeaderboard = {
             .catch(() => cb(null));
     },
 
-    // Занят ли ник. cb(true|false|null) — null при ошибке/оффлайне/без конфига.
     nameTaken(name, cb) {
         if (!this.configured()) { cb(null); return; }
         const url = SUPABASE_URL + '/rest/v1/leaderboard'
@@ -49,8 +43,6 @@ const RemoteLeaderboard = {
             .catch(() => cb(null));
     },
 
-    // Отправить результат через RPC submit_score: одна запись на игрока в (mode, chapter),
-    // хранит лучший результат (время ↑, при равенстве очки ↓).
     submit(name, score, time, mode, chapter, cb) {
         if (!this.configured()) { if (cb) cb(false); return; }
         fetch(SUPABASE_URL + '/rest/v1/rpc/submit_score', {
@@ -62,9 +54,6 @@ const RemoteLeaderboard = {
             .catch(() => { if (cb) cb(false); });
     },
 
-    // Глобальное место игрока в доске (chapter, mode) для результата (time, score).
-    // Считаем ЧУЖИЕ записи строго лучше (time < T, либо time = T и score > S); rank = count + 1.
-    // cb(rank|null) — null при оффлайне/ошибке/без конфига (тогда место не показываем).
     fetchRank(chapter, mode, time, score, name, cb) {
         if (!this.configured()) { cb(null); return; }
         const better = 'or=(time.lt.' + time + ',and(time.eq.' + time + ',score.gt.' + score + '))';
@@ -76,16 +65,13 @@ const RemoteLeaderboard = {
         fetch(url, { headers: Object.assign(this._headers(), { 'Prefer': 'count=exact' }) })
             .then(r => {
                 if (!r.ok) return Promise.reject(r.status);
-                const cr = r.headers.get('content-range') || ''; // "0-0/123" или "*/0"
+                const cr = r.headers.get('content-range') || '';
                 const total = parseInt(cr.split('/')[1], 10);
                 cb(isNaN(total) ? null : total + 1);
             })
             .catch(() => cb(null));
     },
 
-    // Переименовать игрока во всех режимах через RPC rename_player.
-    // Если новое имя уже занято в каком-то режиме — записи сливаются, остаётся лучшее время.
-    // cb(true|false) — успех. Без конфига возвращает true (рейтинг локальный, переименование делается на месте).
     rename(oldName, newName, cb) {
         if (!this.configured()) { if (cb) cb(true); return; }
         fetch(SUPABASE_URL + '/rest/v1/rpc/rename_player', {

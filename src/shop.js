@@ -1,5 +1,3 @@
-// ShopUI — порт src/ShopUI.cpp. Древо навыков (3 ветки x 3 ряда) + вкладка артефактов.
-// Читает/пишет perm-поля прямо в объект save (this.s).
 
 const SHOP_BRANCH_X = [480, 960, 1440];
 const SHOP_NODE_Y = [285, 485, 685];
@@ -7,10 +5,8 @@ const SHOP_CARD_W = 340, SHOP_CARD_H = 150;
 const ACARD_W = 340, ACARD_H = 175;
 const ARTIFACT_COUNT = 7;
 
-// Тексты узлов/веток — в i18n.js (node_titles / node_descs / branch_names).
 const ARTIFACT_COLORS = [0xdc3c3c, 0xffa028, 0x50c8ff, 0xa03cdc, 0xff6428, 0xa0a0a0, 0x3cdca0];
 
-// Ключи иконок (см. TEXTURE_MANIFEST). Файлы опциональны — рендерятся, если есть.
 const ARTIFACT_ICONS = ['art_bloodpact', 'art_glasscannon', 'art_echo', 'art_soulleech', 'art_berserker', 'art_ironskin', 'art_magnetcore'];
 const NODE_ICONS = ['node_damage', 'node_crit', 'node_multishot', 'node_maxhp', 'node_regen', 'node_armor', 'node_speed', 'node_dash', 'node_magnet'];
 
@@ -23,7 +19,7 @@ function branchColor(b) {
 class Shop {
     constructor(scene) {
         this.scene = scene;
-        this.s = scene.save; // ссылка на runtime-сейв
+        this.s = scene.save;
         this.activeTab = 0;
         this.selBranch = 0; this.selRow = 0;
         this.hovBranch = -1; this.hovRow = -1;
@@ -38,7 +34,6 @@ class Shop {
         this.backHovered = false; this.hovArtifact = -1; this.selArtifact = -1;
     }
 
-    // --- логика узлов ---
     nodeCurLevel(b, r) {
         switch (b * 3 + r) {
             case 0: return this.s.permDamage - 1;
@@ -85,7 +80,6 @@ class Shop {
     nodeMaxed(b, r) { return this.nodeCurLevel(b, r) >= this.nodeMaxLevel(b, r); }
     canAfford(b, r) { return this.s.totalCoins >= this.nodeCost(b, r); }
 
-    // --- прямоугольники ---
     nodeRect(b, r) {
         return { x: SHOP_BRANCH_X[b] - SHOP_CARD_W / 2, y: SHOP_NODE_Y[r] - SHOP_CARD_H / 2, w: SHOP_CARD_W, h: SHOP_CARD_H };
     }
@@ -156,7 +150,6 @@ class Shop {
         return true;
     }
 
-    // Покупка + звук только если реально потратили монеты (не экип/снятие артефакта).
     _buyAndNotify() {
         const before = this.s.totalCoins;
         const ok = this.purchaseSelected();
@@ -164,7 +157,6 @@ class Shop {
         return ok;
     }
 
-    // Возвращает 'back' если нажата кнопка Назад, иначе null
     handleClick(x, y) {
         const inside = (rc) => x >= rc.x && x <= rc.x + rc.w && y >= rc.y && y <= rc.y + rc.h;
         if (inside(this.backRect())) return 'back';
@@ -211,19 +203,17 @@ class Shop {
         if (wrapW) style.wordWrap = { width: wrapW, useAdvancedWrap: true };
         const t = this.scene.add.text(x, y, str, style);
         t.setOrigin(originX === undefined ? 0 : originX, originY === undefined ? 0 : originY);
-        if (glow) t.setShadow(0, 0, glow, 12, true, true); // неоновое свечение текста
+        if (glow) t.setShadow(0, 0, glow, 12, true, true);
         return this._add(t);
     }
     _hex(c) { return '#' + ('000000' + c.toString(16)).slice(-6); }
 
-    // --- графические хелперы (рисуют в общий this.g, чтобы текст/иконки были сверху) ---
     _panel(x, y, w, h, rad, fill, fillA, stroke, strokeW) {
         const g = this.g;
         g.fillStyle(fill, fillA === undefined ? 1 : fillA);
         g.fillRoundedRect(x, y, w, h, rad);
         if (strokeW) { g.lineStyle(strokeW, stroke, 1); g.strokeRoundedRect(x, y, w, h, rad); }
     }
-    // Мягкое наружное свечение рамки (несколько затухающих обводок).
     _glow(x, y, w, h, rad, color) {
         const g = this.g;
         for (let i = 3; i >= 1; i--) {
@@ -231,7 +221,6 @@ class Shop {
             g.strokeRoundedRect(x - i * 3, y - i * 3, w + i * 6, h + i * 6, rad + i * 3);
         }
     }
-    // Иконка из атласа, если текстура загружена; иначе null (graceful fallback).
     _icon(key, x, y, box, alpha) {
         if (!key || !this.scene.textures.exists(key)) return null;
         const sp = this.scene.add.sprite(x, y, key).setOrigin(0.5, 0.5);
@@ -239,14 +228,12 @@ class Shop {
         if (alpha !== undefined) sp.setAlpha(alpha);
         return this._add(sp);
     }
-    // Скруглённый прогресс-бар (уровень узла).
     _bar(x, y, w, h, frac, color) {
         const g = this.g;
         g.fillStyle(0x080510, 1); g.fillRoundedRect(x, y, w, h, h / 2);
         if (frac > 0) { g.fillStyle(color, 1); g.fillRoundedRect(x, y, Math.max(h, w * Math.min(1, frac)), h, h / 2); }
     }
 
-    // Пилюля с монетами в правом верхнем углу.
     _coinPill(rightX, cy, coins) {
         const txt = '' + coins;
         const w = 56 + txt.length * 17, h = 46, x = rightX - w, y = cy - h / 2;
@@ -261,19 +248,16 @@ class Shop {
         this._clear();
         const s = this.s;
 
-        // Общий слой графики (фон + панели) — кладём первым, текст/иконки рисуются поверх.
         const g = this._add(this.scene.add.graphics());
         this.g = g;
         g.fillGradientStyle(0x160b2c, 0x160b2c, 0x07040f, 0x07040f, 1);
         g.fillRect(0, 0, 1920, 1080);
 
-        // Верхняя шапка
         this._panel(0, 0, 1920, 96, 0, 0x190d30, 0.9);
         g.lineStyle(2, 0x7a3cc8, 0.55); g.lineBetween(0, 96, 1920, 96);
         this._text(960, 48, this.activeTab === 0 ? t('shop_skilltree') : t('shop_artifacts'), 50, '#e6d8ff', 0.5, 0.5, '#8a3cf0');
         this._coinPill(1894, 48, s.totalCoins);
 
-        // Вкладки
         const tabNames = [t('shop_skilltree'), t('shop_artifacts')];
         for (let i = 0; i < 2; i++) {
             const tr = this.tabRect(i), active = this.activeTab === i;
@@ -285,7 +269,6 @@ class Shop {
         if (this.activeTab === 0) this._renderSkillTree();
         else this._renderArtifacts();
 
-        // Кнопка назад
         const br = this.backRect(), bh = this.backHovered;
         if (bh) this._glow(br.x, br.y, br.w, br.h, 12, 0xffc8ff);
         this._panel(br.x, br.y, br.w, br.h, 12, bh ? 0x4a2560 : 0x241036, 1, bh ? 0xffc8ff : 0x9664c8, 2);
@@ -297,7 +280,6 @@ class Shop {
         for (let b = 0; b < 3; b++) {
             const bc = branchColor(b);
             this._text(SHOP_BRANCH_X[b], 178, t('branch_names')[b], 34, this._hex(bc), 0.5, 0.5, this._hex(bc));
-            // соединители-стрелки между рядами
             for (let r = 0; r < 2; r++) {
                 const x = SHOP_BRANCH_X[b];
                 const y1 = SHOP_NODE_Y[r] + SHOP_CARD_H / 2;
@@ -332,7 +314,6 @@ class Shop {
             if (!locked) { g.fillStyle(col, maxed ? 1 : 0.85); g.fillRoundedRect(nr.x, nr.y + 10, 5, nr.h - 20, 3); }
 
             const cur = this.nodeCurLevel(b, r), mx = this.nodeMaxLevel(b, r);
-            // Иконка слева, если текстура есть; текст тогда слева, иначе по центру.
             const icon = this._icon(NODE_ICONS[b * 3 + r], nr.x + 48, nr.y + nr.h / 2, 78, locked ? 0.3 : 1);
             const tx = icon ? nr.x + 96 : nr.x + SHOP_CARD_W / 2;
             const ox = icon ? 0 : 0.5;
@@ -360,7 +341,6 @@ class Shop {
         let activeEq = 0;
         for (let j = 0; j < ARTIFACT_COUNT; j++) activeEq += (s.permActiveArtifacts >> j) & 1;
 
-        // Индикатор слотов (пилюля по центру)
         const full = activeEq >= 3;
         const slotTxt = t('shop_slots') + ':  ' + activeEq + ' / 3';
         const sw = 80 + slotTxt.length * 11, sh = 44;
@@ -389,13 +369,11 @@ class Shop {
             this.g.fillStyle(col, blocked ? 0.4 : 0.9);
             this.g.fillRoundedRect(ar.x, ar.y + 12, 5, ar.h - 24, 3);
 
-            // Иконка слева, если есть; текст тогда слева, иначе по центру.
             const icon = this._icon(ARTIFACT_ICONS[i], ar.x + 54, ar.y + ar.h / 2, 88, blocked ? 0.35 : 1);
             const tx = icon ? ar.x + 108 : ar.x + ACARD_W / 2;
             const ox = icon ? 0 : 0.5;
 
             const titleCol = isActive ? this._hex(col) : (blocked ? '#7a7286' : (isOwned ? '#d2d2d2' : '#ffffff'));
-            // Доступная ширина для текста: от tx до правого края карточки минус отступ.
             const wrapW = ar.x + ACARD_W - 16 - tx;
             this._text(tx, ar.y + 16, t('artifact_names')[i], 22, titleCol, ox, 0, isActive ? this._hex(col) : undefined);
             this._text(tx, ar.y + 54, t('artifact_descs')[i], 16, blocked ? '#5e5868' : '#a098ac', ox, 0, undefined, wrapW);
