@@ -88,6 +88,7 @@ class MainScene extends Phaser.Scene {
         this.phase3BossSpawned = false;
         this.phaseTransitionTimer = -1;
         this.phaseEventFired = false;
+        this.phaseKills = 0;
 
         this.crazyMode = false;
         this.portal = null;
@@ -363,6 +364,7 @@ class MainScene extends Phaser.Scene {
         this._firstBossKilled = false;
         this.gamePhase = GamePhase.PHASE_1; this.phaseNotifTimer = 0; this.activeStep = 1;
         this.phase2Timer = 0; this.phase3Timer = 0; this.phaseTransitionTimer = -1; this.phaseEventFired = false;
+        this.phaseKills = 0;
         this._encPhase = 0; this._encTimer = 0; this._encAt = 0; this._encDone = false;
 
         this.chapter = getChapter(this.currentChapter);
@@ -1001,11 +1003,14 @@ class MainScene extends Phaser.Scene {
         } else this.controlsHint.setVisible(false);
 
         let warning = false, warnCol = '#ff0000';
-        if (this.survivalTimer > 60 && this.survivalTimer < 63 && !this.isGameOver) {
+        const bossImminent = (timer, step, bossSpawned) =>
+            !bossSpawned && !this.isGameOver &&
+            (timer > C.BOSS_TIME_CAP - 3 || this.phaseKills >= this._bossKillReq(step) - C.BOSS_WARN_KILLS);
+        if (this.gamePhase === GamePhase.PHASE_1 && bossImminent(this.survivalTimer, 1, this.spawner.bossSpawned)) {
             warning = true; warnCol = '#ff0000';
-        } else if (this.gamePhase === GamePhase.PHASE_2 && this.phase2Timer > 57 && this.phase2Timer < 60 && !this.phase2BossSpawned && !this.isGameOver) {
+        } else if (this.gamePhase === GamePhase.PHASE_2 && bossImminent(this.phase2Timer, 2, this.phase2BossSpawned)) {
             warning = true; warnCol = '#b46bff';
-        } else if (this.gamePhase === GamePhase.PHASE_3 && this.phase3Timer > 57 && this.phase3Timer < 60 && !this.phase3BossSpawned && !this.isGameOver) {
+        } else if (this.gamePhase === GamePhase.PHASE_3 && bossImminent(this.phase3Timer, 3, this.phase3BossSpawned)) {
             warning = true; warnCol = '#00e6ff';
         }
         this.warnRect.setVisible(false);

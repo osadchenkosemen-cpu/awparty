@@ -160,19 +160,19 @@ class EnemySpawner {
             }
         } else if (!isPhase2) {
             const cfg = PHASE_CFG[1];
-            if (survivalTime < 60 && this.spawnTimer >= this.spawnInterval(step, isHardcore) / sm) {
+            if (!this.bossSpawned && this.spawnTimer >= this.spawnInterval(step, isHardcore) / sm) {
                 const p = findSpawnPos(px, py, arenaW, arenaH, SPAWN_SAFE_DIST);
                 const e = this._makeRegular(scene, enemyKey, p.x, p.y, cfg);
                 this._finalize(scene, e, isHardcore, cfg.hardcoreSpeedMul, enemies);
                 this.spawnTimer = 0;
             }
-            if (survivalTime >= 10 && survivalTime < 60 && this.goblinSpawnTimer >= 25) {
+            if (survivalTime >= 10 && !this.bossSpawned && this.goblinSpawnTimer >= 25) {
                 const p = findSpawnPos(px, py, arenaW, arenaH, SPAWN_SAFE_DIST_GOBLIN);
                 const g = this._makeGoblin(scene, enemyKey, goblinKey, p.x, p.y, cfg);
                 this._finalize(scene, g, isHardcore, cfg.hardcoreSpeedMul, enemies);
                 this.goblinSpawnTimer = 0;
             }
-            if (survivalTime >= 60 && !this.bossSpawned) {
+            if ((survivalTime >= C.BOSS_TIME_CAP || (survivalTime >= C.BOSS_KILL_MIN_TIME && scene.phaseKills >= scene._bossKillReq(1))) && !this.bossSpawned) {
                 const bp = findSpawnPos(px, py, arenaW, arenaH, 800);
                 const bx = bp.x, by = bp.y;
                 const boss = new Enemy(scene, bx, by, scene._boss1Key || enemyKey);

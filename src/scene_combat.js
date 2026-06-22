@@ -100,6 +100,7 @@ MainScene.prototype.handleEnemyDeaths = function(px, py) {
         for (const e of this.enemies) {
             if (e.hp > 0) continue;
             this.killCount++;
+            if (e.type !== EnemyType.MOSHERLING && !e.isBoss) this.phaseKills++;
             if (e.splitOnDeath && this._mosherKey) {
                 const SP = C.ENEMY.MOSHER;
                 const n = SP.splitMin + randInt(SP.splitMax - SP.splitMin + 1);

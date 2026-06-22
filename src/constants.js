@@ -159,6 +159,12 @@ const C = {
     },
 
     CRAZY_HP_MULT: 5,
+
+    BOSS_KILL_REQ: [85, 95, 110],
+    BOSS_TIME_CAP: 60,
+    BOSS_KILL_MIN_TIME: 30,
+    BOSS_WARN_KILLS: 8,
+
     PORTAL_TOP_MARGIN: 280,
     PORTAL_RADIUS: 140,
 

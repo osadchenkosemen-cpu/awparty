@@ -1,4 +1,11 @@
 
+MainScene.prototype._bossKillReq = function(step) {
+        const base = C.BOSS_KILL_REQ[Math.max(1, step | 0) - 1] || C.BOSS_KILL_REQ[C.BOSS_KILL_REQ.length - 1];
+        const sm = (this.chapter && this.chapter.spawnMult) || 1;
+        const hc = this.save.isHardcoreMode ? 1.5 : 1;
+        return Math.round(base * sm * hc);
+    };
+
 MainScene.prototype._updatePhaseProgression = function(dt, px, py) {
         const s = this.save;
         if (this.phaseTransitionTimer >= 0) {
@@ -7,10 +14,10 @@ MainScene.prototype._updatePhaseProgression = function(dt, px, py) {
                 this.phaseEventFired = true;
                 if (this.gamePhase === GamePhase.CLEARING) {
                     this._snapshotStage();
-                    this.gamePhase = GamePhase.PHASE_2; this.phaseNotifTimer = 0; this.activeStep = 2; this.phase2Timer = 0; this.spawner.resetForPhase2();
+                    this.gamePhase = GamePhase.PHASE_2; this.phaseNotifTimer = 0; this.activeStep = 2; this.phase2Timer = 0; this.phaseKills = 0; this.spawner.resetForPhase2();
                 } else if (this.gamePhase === GamePhase.PHASE_2) {
                     this._snapshotStage();
-                    this.gamePhase = GamePhase.PHASE_3; this.phaseNotifTimer = 0; this.activeStep = 3; this.phase3Timer = 0; this.spawner.resetForPhase2();
+                    this.gamePhase = GamePhase.PHASE_3; this.phaseNotifTimer = 0; this.activeStep = 3; this.phase3Timer = 0; this.phaseKills = 0; this.spawner.resetForPhase2();
                 }
             }
             if (this.phaseTransitionTimer >= 1.5) { this.phaseTransitionTimer = -1; this.phaseEventFired = false; }
@@ -18,7 +25,7 @@ MainScene.prototype._updatePhaseProgression = function(dt, px, py) {
 
         if (this.gamePhase === GamePhase.PHASE_3) {
             this.phase3Timer += dt;
-            if (this.phase3Timer >= 60 && !this.phase3BossSpawned) {
+            if ((this.phase3Timer >= C.BOSS_TIME_CAP || (this.phase3Timer >= C.BOSS_KILL_MIN_TIME && this.phaseKills >= this._bossKillReq(3))) && !this.phase3BossSpawned) {
                 const bp = findSpawnPos(px, py, C.ARENA_WIDTH, C.ARENA_HEIGHT, 800);
                 const boss3 = new Enemy(this, bp.x, bp.y, this._boss3Key);
                 if (this.chapter && this.chapter.boss3Type === 'SPLIT') boss3.makeBossSplit(this._boss3Key, 0);
@@ -33,7 +40,7 @@ MainScene.prototype._updatePhaseProgression = function(dt, px, py) {
 
         if (this.gamePhase === GamePhase.PHASE_2) {
             this.phase2Timer += dt;
-            if (this.phase2Timer >= 60 && !this.phase2BossSpawned) {
+            if ((this.phase2Timer >= C.BOSS_TIME_CAP || (this.phase2Timer >= C.BOSS_KILL_MIN_TIME && this.phaseKills >= this._bossKillReq(2))) && !this.phase2BossSpawned) {
                 const bp = findSpawnPos(px, py, C.ARENA_WIDTH, C.ARENA_HEIGHT, 800);
                 const bx = bp.x, by = bp.y;
                 const boss2 = new Enemy(this, bx, by, this._boss2Key);
