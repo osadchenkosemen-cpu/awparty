@@ -268,9 +268,6 @@ const CARD_MAX_LEVEL = [
 
 const TIER_WEIGHTS = [64, 28, 8]; // common / rare / legendary
 
-const LEGENDARY_UPGRADE_IDS = [5, 6];
-const LEGENDARY_CARD_CHANCE = 0.13;
-
 const ABILITY_COOLDOWNS = { 0: 25, 1: 15, 2: 12, 3: 14, 4: 16, 5: 14, 6: 15 };
 const ABILITY_ICONS = { '-10': 'ability_dash', 0: 'ability_invincible', 1: 'ability_slam', 2: 'ability_disc', 3: 'ability_laser', 4: 'ability_skull', 5: 'ability_sonic', 6: 'ability_shatter' };
 

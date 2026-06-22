@@ -7,7 +7,7 @@ class HUD {
         this.uiW = C.VIEW_WIDTH;
         this.uiH = C.VIEW_HEIGHT;
         this.objects = [];
-        this.skillCounts = [0, 0, 0, 0, 0, 0, 0];
+        this.skillCounts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         this._lastBossExists = false;
         this._build();
         this.setVisible(false);
@@ -43,9 +43,9 @@ class HUD {
         this.bossBarWidth = bW;
 
         const iconKeys = UPGRADE_ICONS;
-        const cardColors = [0xff7800, 0xff3232, 0x00e6ff, 0xb400ff, 0x32ff64, 0xffd200, 0xffd200];
+        const cardColors = [0xff7800, 0xff3232, 0x00e6ff, 0xb400ff, 0x32ff64, 0x9600ff, 0xffd200, 0x9600ff, 0x9600ff, 0x9600ff, 0xffd200];
         this.skillCards = [];
-        for (let i = 0; i < 7; i++) {
+        for (let i = 0; i < CARD_COUNT; i++) {
             const bg = add(this.scene.add.rectangle(0, 0, 64, 80, 0x0f001e, 210 / 255).setOrigin(0, 0).setStrokeStyle(2, cardColors[i]));
             const icon = add(this.scene.add.sprite(0, 0, iconKeys[i]).setOrigin(0.5, 0.5));
             const isc = 44 / Math.max(icon.width, icon.height);
@@ -105,7 +105,7 @@ class HUD {
             }
         }
         if (this.skillCards) {
-            for (let i = 0; i < 7; i++) {
+            for (let i = 0; i < CARD_COUNT; i++) {
                 const show = this.skillCounts[i] > 0;
                 this.skillCards[i].bg.setVisible(show);
                 this.skillCards[i].icon.setVisible(show);
@@ -182,7 +182,7 @@ class HUD {
 
         const cardW2 = 64, gap2 = 10;
         let col = 0;
-        for (let i = 0; i < 7; i++) {
+        for (let i = 0; i < CARD_COUNT; i++) {
             this.skillCounts[i] = runPickCounts[i];
             const card = this.skillCards[i];
             if (this.skillCounts[i] <= 0) {
@@ -194,7 +194,7 @@ class HUD {
             card.bg.setPosition(cx, cy).setVisible(true);
             card.icon.setPosition(cx + cardW2 / 2, cy + 26).setVisible(true);
             let stars;
-            if (LEGENDARY_UPGRADE_IDS.includes(i)) {
+            if (CARD_TIER[i] === TIER.LEGENDARY) {
                 stars = '★';
             } else {
                 stars = '';

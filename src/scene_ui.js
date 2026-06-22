@@ -275,9 +275,9 @@ MainScene.prototype._buildLeaderboard = function() {
 
 MainScene.prototype._runCards = function() {
         const out = [];
-        for (let id = 0; id < 7; id++) {
+        for (let id = 0; id < CARD_COUNT; id++) {
             if (this.runUpgradeLevels[id] > 0) {
-                const badge = LEGENDARY_UPGRADE_IDS.includes(id) ? '★' : ('x' + this.runUpgradeLevels[id]);
+                const badge = CARD_TIER[id] === TIER.LEGENDARY ? '★' : ('x' + this.runUpgradeLevels[id]);
                 out.push({ key: UPGRADE_ICONS[id], badge });
             }
         }
@@ -489,33 +489,30 @@ MainScene.prototype._buildLevelUp = function() {
         this._mAdd(this.add.rectangle(0, 0, W, H, 0x0a001e, 220 / 255).setOrigin(0, 0));
         this._mText(W / 2, 150, t('levelup'), 100, '#ffff00', 0.5, 0.5, '#ff0096', 5);
         this.levelUpCards = [];
-        for (let i = 0; i < 3; i++) {
+        const n = this.levelUpIds.length;
+        const TIER_STYLE = [
+            { fill: 0x141414, stroke: 0x9a9a9a, sw: 4, title: '#cfcfcf', badge: '#cfcfcf', badgeKey: 'card_common',    bs: '#2a2a2a' },
+            { fill: 0x140028, stroke: 0x9600ff, sw: 5, title: '#00ffc8', badge: '#c890ff', badgeKey: 'card_rare',      bs: '#3a0060' },
+            { fill: 0x2a2000, stroke: 0xffd200, sw: 7, title: '#ffd200', badge: '#ffd200', badgeKey: 'card_legendary', bs: '#643c00' },
+        ];
+        for (let i = 0; i < n; i++) {
             const uId = this.levelUpIds[i];
-            const cx = W / 2 + (i - 1) * 450;
+            const cx = W / 2 + (i - (n - 1) / 2) * 450;
             const cy = H / 2 + 50;
-            const isLegendary = LEGENDARY_UPGRADE_IDS.includes(uId);
-            const fill = isLegendary ? 0x2a2000 : 0x140028;
-            const strokeCol = isLegendary ? 0xffd200 : 0x9600ff;
-            const strokeW = isLegendary ? 7 : 5;
-            const titleCol = isLegendary ? '#ffd200' : '#00ffc8';
-            const rect = this._mAdd(this.add.rectangle(cx, cy, 400, 550, fill, 240 / 255).setOrigin(0.5, 0.5).setStrokeStyle(strokeW, strokeCol));
-            const title = this._mText(cx, cy - 230, t('upgrade_titles')[uId], 35, titleCol, 0.5, 0);
+            const st = TIER_STYLE[CARD_TIER[uId]];
+            const rect = this._mAdd(this.add.rectangle(cx, cy, 400, 550, st.fill, 240 / 255).setOrigin(0.5, 0.5).setStrokeStyle(st.sw, st.stroke));
+            const title = this._mText(cx, cy - 230, t('upgrade_titles')[uId], 35, st.title, 0.5, 0);
             const icon = this._mAdd(this.add.sprite(cx, cy - 30, UPGRADE_ICONS[uId]).setOrigin(0.5, 0.5));
             const iscale = 180 / icon.width;
             icon.setScale(iscale);
             const desc = this._mText(cx, cy + 110, t('upgrade_descs')[uId], 25, '#ffffff', 0.5, 0);
-            let badgeObj = null;
-            const cnt = this.runUpgradeLevels[uId];
-            if (isLegendary) {
-                badgeObj = this._mText(cx, cy + 215, t('card_legendary'), 26, '#ffd200', 0.5, 0.5, '#643c00', 3);
-            } else if (cnt > 0) {
-                let stars = '';
-                for (let s = 0; s < cnt; s++) stars += '*';
-                badgeObj = this._mText(cx, cy + 215, stars, 28, '#ffd200', 0.5, 0.5, '#643c00', 2);
-            }
-            const objs = [rect, title, icon, desc]; if (badgeObj) objs.push(badgeObj);
+            const max = CARD_MAX_LEVEL[uId];
+            let label = t(st.badgeKey);
+            if (max !== Infinity && max > 1) label += '   ' + (this.runUpgradeLevels[uId] + 1) + '/' + max;
+            const badgeObj = this._mText(cx, cy + 215, label, 26, st.badge, 0.5, 0.5, st.bs, 3);
+            const objs = [rect, title, icon, desc, badgeObj];
             const baseY = objs.map(o => o.y);
-            const baseSX = [1, 1, iscale, 1]; if (badgeObj) baseSX.push(1);
+            const baseSX = [1, 1, iscale, 1, 1];
             this.levelUpCards.push({ rect, objs, baseY, baseSX, uId });
         }
         this._animateLevelUp();
@@ -612,7 +609,8 @@ MainScene.prototype.onPointerMove = function(p) {
         } else if (st === GameState.LEVEL_UP) {
             if (this.levelUpAnimTimer >= 1) {
                 let ns = -1;
-                for (let i = 0; i < 3; i++) { const cx = W / 2 + (i - 1) * 450, cy = H / 2 + 50; if (hit(cx - 200, cy - 275, 400, 550)) ns = i; }
+                const n = this.levelUpIds.length;
+                for (let i = 0; i < n; i++) { const cx = W / 2 + (i - (n - 1) / 2) * 450, cy = H / 2 + 50; if (hit(cx - 200, cy - 275, 400, 550)) ns = i; }
                 this.selectedLevelUpIndex = ns;
             }
         } else if (st === GameState.ABILITY_SELECT) {
@@ -665,7 +663,8 @@ MainScene.prototype.onPointerDown = function(p) {
             if (r === 'back') { this.audio.play('sfx_menu_click'); this.saveGame(); this.setState(GameState.LOBBY); }
         } else if (st === GameState.LEVEL_UP) {
             if (this.levelUpAnimTimer >= 1) {
-                for (let i = 0; i < 3; i++) { const cx = W / 2 + (i - 1) * 450, cy = H / 2 + 50; if (hit(cx - 200, cy - 275, 400, 550)) { this.applyUpgrade(this.levelUpIds[i]); return; } }
+                const n = this.levelUpIds.length;
+                for (let i = 0; i < n; i++) { const cx = W / 2 + (i - (n - 1) / 2) * 450, cy = H / 2 + 50; if (hit(cx - 200, cy - 275, 400, 550)) { this.applyUpgrade(this.levelUpIds[i]); return; } }
             }
         } else if (st === GameState.ABILITY_SELECT) {
             if (this.abilitySelectAnimTimer >= 0.5 && this.abilityCards) {
