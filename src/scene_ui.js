@@ -266,16 +266,16 @@ MainScene.prototype._buildLeaderboard = function() {
         // порядке — пересортировка идемпотентна; оффлайн — пересортировка локальных записей).
         const board = (this.leaderboards[this.lbView][this.lbChapter] || []).slice()
             .sort(this.lbSort === 'score' ? lbCompareScore : lbCompare);
-        const hdrs = [t('lb_col_num'), t('lb_col_name'), t('lb_col_score'), t('lb_col_time'), t('lb_col_date')];
+        const hdrs = [t('lb_col_num'), t('lb_col_name'), t('lb_col_time'), t('lb_col_score'), t('lb_col_date')];
         for (let i = 0; i < 5; i++) {
-            // Колонки «очки» (2) и «время» (3) — переключатели сортировки; активная помечается ▼.
-            const active = (i === 2 && this.lbSort === 'score') || (i === 3 && this.lbSort === 'time');
+            // Колонки «время» (2) и «очки» (3) — переключатели сортировки; активная помечается ▼.
+            const active = (i === 2 && this.lbSort === 'time') || (i === 3 && this.lbSort === 'score');
             this._mText(colX[i], rowY0 - 38, hdrs[i] + (active ? ' ▼' : ''), 26, active ? '#ffd700' : '#00ffc8', 0, 0);
         }
-        // Зоны клика для сортировки (по заголовкам ОЧКИ/ВРЕМЯ) — читаются в onPointerDown.
+        // Зоны клика для сортировки (по заголовкам ВРЕМЯ/ОЧКИ) — читаются в onPointerDown.
         this._lbSortRects = {
-            score: { x: colX[2] - 10, y: rowY0 - 44, w: 170, h: 40 },
-            time:  { x: colX[3] - 10, y: rowY0 - 44, w: 170, h: 40 },
+            time:  { x: colX[2] - 10, y: rowY0 - 44, w: 170, h: 40 },
+            score: { x: colX[3] - 10, y: rowY0 - 44, w: 170, h: 40 },
         };
         const hiName = this._pendingHighlight || ''; // подсветка «своей» записи по имени (устойчива к сортировке)
         for (let i = 0; i < 10; i++) {
@@ -287,8 +287,8 @@ MainScene.prototype._buildLeaderboard = function() {
             this._mText(colX[0], y, '' + (i + 1), 30, col, 0, 0);
             if (filled) {
                 this._mText(colX[1], y, e.name, 30, col, 0, 0);
-                this._mText(colX[2], y, fmtNum(e.score || 0), 30, col, 0, 0);
-                this._mText(colX[3], y, formatTime(e.time), 30, col, 0, 0);
+                this._mText(colX[2], y, formatTime(e.time), 30, col, 0, 0);
+                this._mText(colX[3], y, fmtNum(e.score || 0), 30, col, 0, 0);
                 const pad = (n) => (n < 10 ? '0' + n : '' + n);
                 this._mText(colX[4], y, pad(e.day) + '.' + pad(e.month) + '.' + e.year, 30, col, 0, 0);
             } else this._mText(colX[1], y, '---', 30, col, 0, 0);
