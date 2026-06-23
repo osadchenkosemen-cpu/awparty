@@ -143,6 +143,18 @@ class MainScene extends Phaser.Scene {
         this.input.on('pointerdown', (p) => this.onPointerDown(p));
         this.input.on('pointermove', (p) => this.onPointerMove(p));
 
+        // Браузер всегда позволяет выйти из Fullscreen API по ESC (этого не отключить).
+        // Поэтому не пытаемся «удержать» ФС, а синхронизируем переключатель настроек с
+        // реальным состоянием: вышел по ESC → настройка честно показывает WINDOWED.
+        const syncFullscreen = (on) => {
+            if (this.save.isFullscreen === on) return;
+            this.save.isFullscreen = on;
+            this.saveGame();
+            if (this.currentState === GameState.SETTINGS) this.rebuildMenu();
+        };
+        this.scale.on('enterfullscreen', () => syncFullscreen(true));
+        this.scale.on('leavefullscreen', () => syncFullscreen(false));
+
         this.menuObjs = [];
         this.menuBg = this.addUI(this.add.image(0, 0, 'menu_bg').setOrigin(0, 0));
         this.menuBg.setDisplaySize(C.VIEW_WIDTH, C.VIEW_HEIGHT);
