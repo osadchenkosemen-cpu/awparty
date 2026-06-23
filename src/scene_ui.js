@@ -146,20 +146,7 @@ MainScene.prototype._buildChapterSelect = function() {
             this._mText(bX, bY, (ch.id < 10 ? '0' : '') + ch.id, 36, hexUi, 0.5, 0.5, '#000', 2);
             this._mText(cx + 30, bY, t('chapter_label'), 30, locked ? '#6a6a78' : '#ffffff', 0.5, 0.5, '#000', 3);
 
-            // 5) шкала сложности (честно из hpMult: ×1.0 / ×1.6 / ×2.4)
-            const filled = [2, 3, 5][i] !== undefined ? [2, 3, 5][i] : Math.min(5, i * 2 + 2);
-            const dy = r.y + r.h - 128;
-            this._mText(cx, dy - 30, t('chapter_difficulty'), 22, locked ? '#6a6a78' : '#bfb8e0', 0.5, 0.5, '#000', 2);
-            const segN = 5, segW = 46, segH = 14, segGap = 10;
-            let sx = cx - (segN * segW + (segN - 1) * segGap) / 2;
-            for (let s = 0; s < segN; s++) {
-                const on = s < filled;
-                this._mAdd(this.add.rectangle(sx, dy, segW, segH, on ? uiHue : 0x2a2440, on ? 1 : 0.55)
-                    .setOrigin(0, 0.5).setStrokeStyle(1, on ? uiHue : 0x3a3450, 0.8));
-                sx += segW + segGap;
-            }
-
-            // 6) кнопка-пилюля «ИГРАТЬ» / замок «ЗАКРЫТО»
+            // 5) кнопка-пилюля «ИГРАТЬ» / замок «ЗАКРЫТО»
             const py = r.y + r.h - 56;
             if (locked) {
                 this._mAdd(this.add.rectangle(cx, py, 240, 56, 0x000000, 0.4).setStrokeStyle(2, 0x4a4a5a, 1));

@@ -14,7 +14,6 @@ const I18N = {
         chapter_label: 'CHAPTER',
         chapter_play: 'PLAY',
         chapter_locked: 'CLOSED',
-        chapter_difficulty: 'DIFFICULTY',
         chapter_hint_back: 'BACK TO HUB',
 
         set_title: 'SETTINGS',
@@ -223,7 +222,6 @@ const I18N = {
         chapter_label: 'ГЛАВА',
         chapter_play: 'ИГРАТЬ',
         chapter_locked: 'ЗАКРЫТО',
-        chapter_difficulty: 'СЛОЖНОСТЬ',
         chapter_hint_back: 'НАЗАД В ХАБ',
 
         set_title: 'НАСТРОЙКИ',
