@@ -64,15 +64,21 @@ MainScene.prototype._refreshRemoteLeaderboard = function(mode, chapter) {
         const sort = this.lbSort;
         RemoteLeaderboard.fetchTop(10, mode, chapter, sort, (rows) => {
             if (sort !== this.lbSort) return;
-            if (!rows) return;
-            const lb = [];
-            for (let i = 0; i < 10; i++) lb.push(rows[i] || lbEmptyEntry());
-            this.leaderboards[mode][chapter] = lb;
+            if (!rows) return;                       // ошибка/офлайн → оставить локальную доску как есть
+            // Пустой онлайн-ответ (на сервере нет записей этой доски) НЕ должен затирать
+            // локальные рекорды: иначе только что заработанный локальный рекорд исчезает с экрана.
+            // Перезаписываем онлайн-данными только когда они реально есть (иначе фолбэк на локальные).
+            if (rows.length > 0) {
+                const lb = [];
+                for (let i = 0; i < 10; i++) lb.push(rows[i] || lbEmptyEntry());
+                this.leaderboards[mode][chapter] = lb;
+            }
             if (this.lbView === mode && this.lbChapter === chapter) {
                 this.leaderboardNewEntryIndex = -1;
                 const h = this._pendingHighlight;
-                if (h) for (let i = 0; i < 10; i++) {
-                    if (lb[i].name === h) { this.leaderboardNewEntryIndex = i; break; }
+                const cur = this.leaderboards[mode][chapter] || [];
+                if (h) for (let i = 0; i < cur.length; i++) {
+                    if (cur[i] && cur[i].name === h) { this.leaderboardNewEntryIndex = i; break; }
                 }
                 if (this.currentState === GameState.LEADERBOARD) this.rebuildMenu();
             }
