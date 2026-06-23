@@ -814,12 +814,28 @@ class MainScene extends Phaser.Scene {
         for (let i = 0; i < 3; i++) if (this.abilityCooldowns[i] > 0) this.abilityCooldowns[i] -= dt;
 
         let bossExists = false, bossHpPct = 0;
-        for (const e of this.enemies) {
-            if (e.isBoss) {
-                bossExists = true; bossHpPct = Math.max(0, e.hp / e.maxHp);
-                const bn = e.isBoss3 ? t('boss3_name') : e.isBoss2 ? t('boss2_name') : t('boss_name');
+        if (this.chapter && this.chapter.custom === 'CH3') {
+            let curHp = 0, maxHp = 0, count = 0, single = null;
+            for (const e of this.enemies) {
+                if (e.isBoss && e.hp > 0) { count++; curHp += e.hp; maxHp += e.maxHp; if (!single) single = e; }
+            }
+            if (count > 0) {
+                bossExists = true;
+                bossHpPct = maxHp > 0 ? curHp / maxHp : 0;
+                const bn = count >= 2 ? t('boss_duet')
+                    : (single._ch3Rhino ? t('rhino_name')
+                        : single.isBoss3 ? t('boss3_name')
+                            : single.isBoss2 ? t('boss2_name') : t('boss_name'));
                 if (this._lastBossName !== bn) { this._lastBossName = bn; this.hud.bossName.setText(bn); }
-                break;
+            }
+        } else {
+            for (const e of this.enemies) {
+                if (e.isBoss) {
+                    bossExists = true; bossHpPct = Math.max(0, e.hp / e.maxHp);
+                    const bn = e.isBoss3 ? t('boss3_name') : e.isBoss2 ? t('boss2_name') : t('boss_name');
+                    if (this._lastBossName !== bn) { this._lastBossName = bn; this.hud.bossName.setText(bn); }
+                    break;
+                }
             }
         }
         this._bossExists = bossExists;
