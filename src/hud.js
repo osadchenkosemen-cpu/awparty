@@ -290,13 +290,14 @@ class HUD {
         const ptr = this.scene.input.activePointer;
         const mx = ptr.x, my = ptr.y;
         const inZone = (z) => mx >= z.x && mx <= z.x + z.w && my >= z.y && my <= z.y + z.h;
-        const hpTarget = inZone(this._hpZone) ? 0.15 : 1;
-        const abTarget = inZone(this._abZone) ? 0.15 : 1;
+        // HP-бар и способности гаснут ВМЕСТЕ при наведении на любой из них —
+        // иначе остаётся наполовину перекрытым; так видно врагов за обоими сразу.
+        const target = (inZone(this._hpZone) || inZone(this._abZone)) ? 0.15 : 1;
         let dt = this.scene.game.loop.delta / 1000;
         if (!(dt > 0) || dt > 0.1) dt = 0.016;
         const k = Math.min(1, dt * 12);
-        this._hpAlpha += (hpTarget - this._hpAlpha) * k;
-        this._abAlpha += (abTarget - this._abAlpha) * k;
+        this._hpAlpha += (target - this._hpAlpha) * k;
+        this._abAlpha += (target - this._abAlpha) * k;
         for (const o of this._hpFadeObjs) o.setAlpha(this._hpAlpha);
         for (const o of this._abFadeObjs) o.setAlpha(this._abAlpha);
         this.fx.setAlpha(this._abAlpha);
