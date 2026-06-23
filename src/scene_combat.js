@@ -164,7 +164,8 @@ MainScene.prototype.handleEnemyDeaths = function(px, py) {
                         this.coins.push(this.spawnCoin(ex + randInt(150) - 75, ey + randInt(150) - 75));
                     }
                     for (let k = 0; k < 3; k++) this.vinyls.push(this.spawnVinyl(ex + randInt(80) - 40, ey + randInt(80) - 40));
-                    this._startCrazyMode();
+                    // Гл.3: портал/crazy запускает режиссёр, когда оба босса дуэта мертвы.
+                    if (!(this.chapter && this.chapter.custom === 'CH3')) this._startCrazyMode();
                 } else {
                     this._boss3Alive = true;
                 }

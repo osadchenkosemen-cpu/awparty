@@ -23,6 +23,8 @@ MainScene.prototype._updatePhaseProgression = function(dt, px, py) {
             if (this.phaseTransitionTimer >= 1.5) { this.phaseTransitionTimer = -1; this.phaseEventFired = false; }
         }
 
+        if (this.chapter && this.chapter.custom === 'CH3') { this._updateChapter3(dt, px, py); return; }
+
         if (this.gamePhase === GamePhase.PHASE_3) {
             this.phase3Timer += dt;
             if ((this.phase3Timer >= C.BOSS_TIME_CAP || (this.phase3Timer >= C.BOSS_KILL_MIN_TIME && this.phaseKills >= this._bossKillReq(3))) && !this.phase3BossSpawned) {
@@ -61,6 +63,7 @@ MainScene.prototype._updateSpawning = function(dt, px, py) {
             && !(this.gamePhase === GamePhase.PHASE_2 && this.phase2BossSpawned)
             && !(this.gamePhase === GamePhase.PHASE_3 && this._boss3Alive)
             && !(this.crazyMode && this._crazySpawnDelay > 0)
+            && !this._ch3NoSpawn
             && (this.phaseTransitionTimer < 0);
         if (spawningActive) {
             const p2 = this.gamePhase === GamePhase.PHASE_2;
@@ -75,6 +78,7 @@ MainScene.prototype._checkPhaseTransitions = function() {
         if (this.gamePhase === GamePhase.CLEARING && this.enemies.length === 0 && this.phaseTransitionTimer < 0) {
             this.phaseTransitionTimer = 0; this.phaseEventFired = false;
         }
+        if (this.chapter && this.chapter.custom === 'CH3') return;
         if (this.gamePhase === GamePhase.PHASE_2 && this.phase2BossSpawned && this.enemies.length === 0 && this.phaseTransitionTimer < 0) {
             this.phaseTransitionTimer = 0; this.phaseEventFired = false;
         }
