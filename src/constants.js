@@ -229,6 +229,7 @@ const CHAPTERS = [
       floorKey: 'floor3', floorTint: 0xff6464, floorMode: 'stretch',
       enemyKey: 'enemy', goblinKey: 'enemyV',
       boss1Key: 'enemy', boss2Key: 'boss2', boss3Key: 'boss3',
+      cardBosses: ['boss3', 'c2_boss1', 'c2_boss2'], // карточка-гаунтлет: центр + слева/справа
       arenaW: 4000, arenaH: 4000, custom: 'CH3', encircleEvent: true,
       hpMult: 2.4, dmgMult: 1.8, spawnMult: 1.4, bossHpMult: 2.6 },
 ];

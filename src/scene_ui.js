@@ -126,13 +126,22 @@ MainScene.prototype._buildChapterSelect = function() {
             this._mAdd(this.add.image(cx, cy, floorKey)).setDisplaySize(r.w, r.h).setTint(floorTint);
             this._mAdd(this.add.rectangle(cx, cy, r.w, r.h, 0x06001a, locked ? 0.58 : 0.32).setOrigin(0.5, 0.5));
 
-            // 2) силуэт финального босса главы — нависающая фигура по центру
-            const bossKey = this._tex(ch.boss3Key, 'boss3');
-            if (this.textures.exists(bossKey)) {
-                const boss = this._mAdd(this.add.image(cx, cy + 24, bossKey));
-                const bsrc = this.textures.get(bossKey).getSourceImage();
-                const bsc = (bsrc && bsrc.width) ? Math.min((r.w * 0.72) / bsrc.width, (r.h * 0.52) / bsrc.height) : 0.5;
-                boss.setScale(bsc).setTint(locked ? 0x2e2e38 : ch.hue).setAlpha(locked ? 0.12 : 0.42);
+            // 2) силуэт(ы) босса главы — нависающие фигуры. Для глав-гаунтлетов
+            //    (ch.cardBosses) показываем несколько боссов: центр + по бокам.
+            const drawCardBoss = (key, bx, by, wFrac, hFrac, alpha) => {
+                const bk = this._tex(key, 'boss3');
+                if (!this.textures.exists(bk)) return;
+                const img = this._mAdd(this.add.image(bx, by, bk));
+                const src = this.textures.get(bk).getSourceImage();
+                const sc = (src && src.width) ? Math.min((r.w * wFrac) / src.width, (r.h * hFrac) / src.height) : 0.5;
+                img.setScale(sc).setTint(locked ? 0x2e2e38 : ch.hue).setAlpha(locked ? 0.12 : alpha);
+            };
+            if (ch.cardBosses && ch.cardBosses.length >= 3) {
+                drawCardBoss(ch.cardBosses[1], cx - 96, cy + 80, 0.46, 0.34, 0.26); // слева
+                drawCardBoss(ch.cardBosses[2], cx + 96, cy + 80, 0.46, 0.34, 0.26); // справа
+                drawCardBoss(ch.cardBosses[0], cx, cy + 18, 0.60, 0.46, 0.46);       // центр, спереди
+            } else {
+                drawCardBoss(ch.boss3Key, cx, cy + 24, 0.72, 0.52, 0.42);
             }
 
             // 3) неон-рамка (+ внешнее свечение у выбранной)
