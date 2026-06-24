@@ -981,7 +981,15 @@ class MainScene extends Phaser.Scene {
     }
 
     _rollCardIds() {
-        const avail = (id) => this.runUpgradeLevels[id] < CARD_MAX_LEVEL[id];
+        const p = this.player;
+        // Кроме CARD_MAX_LEVEL отсекаем карты, упёршиеся в функциональный потолок
+        // (speed→400, magnet→600/∞), иначе выбор тратится впустую: эффекта уже нет.
+        const avail = (id) => {
+            if (this.runUpgradeLevels[id] >= CARD_MAX_LEVEL[id]) return false;
+            if (id === 2 && p.speed >= C.SPEED_CARD_CAP) return false;
+            if (id === 3 && p.pickupRadius >= C.MAGNET_CARD_CAP) return false;
+            return true;
+        };
         const poolByTier = (tier, taken) => {
             const out = [];
             for (let id = 0; id < CARD_COUNT; id++)
@@ -1048,8 +1056,8 @@ class MainScene extends Phaser.Scene {
         const lvl = this.runUpgradeLevels[id] + 1;
         if (id === 0) p.shootCooldown = Math.max(0.22, p.shootCooldown * 0.93);
         else if (id === 1) p.attackDamage += 1;
-        else if (id === 2 && p.speed < 400) p.speed += 20;
-        else if (id === 3 && p.pickupRadius < 600) p.pickupRadius += 50;
+        else if (id === 2 && p.speed < C.SPEED_CARD_CAP) p.speed += 20;
+        else if (id === 3 && p.pickupRadius < C.MAGNET_CARD_CAP) p.pickupRadius += 50;
         else if (id === 4) { p.maxHp += 10; p.hp = p.maxHp; }
         else if (id === 5) p.bladeMail = true;
         else if (id === 6) p.pierce = true;

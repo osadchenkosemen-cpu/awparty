@@ -238,6 +238,12 @@ function getChapter(id) { return CHAPTERS.find(c => c.id === id) || CHAPTERS[0];
 // Стрелки к оставшимся врагам показываются, когда живых не-боссов не больше этого.
 C.LAST_ENEMY_ARROW_MAX = 3;
 
+// Функциональные потолки in-run карт: speed упирается в 400, magnet — в 600
+// (при MAGNET_CORE pickupRadius=99999 → тоже выше). Достигнув их, карта больше
+// не предлагается (иначе выбор тратился бы впустую: уровень растёт, эффекта нет).
+C.SPEED_CARD_CAP = 400;
+C.MAGNET_CARD_CAP = 600;
+
 C.CHAPTER3 = {
     STAGE2_KILLS: 60,       // кап убийств этапа 2 (мид-босс B2 на половине)
     STAGE3_KILLS: 70,       // этап 3: Носорог на половине (STAGE3_KILLS/2)
