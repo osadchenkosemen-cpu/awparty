@@ -125,10 +125,10 @@ grant execute on function public.submit_score(text, integer, numeric, text, inte
 
 
 -- ============================================================================
--- ФАЗА 3 (НЕ применять сейчас — только ПОСЛЕ деплоя клиента, что шлёт runid).
+-- ФАЗА 3 — АКТИВНА. Клиент 227 шлёт runid (проверено: токены идут в run_tokens).
 -- Делает токен обязательным: сабмит без валидного нонса отклоняется.
+-- Применить этот блок в Supabase → SQL Editor (заменяет транзитный submit_score выше).
 -- ============================================================================
-/*
 create or replace function public.submit_score(
   p_name text, p_score integer, p_time numeric, p_mode text, p_chapter integer,
   p_runid uuid default null)
@@ -162,7 +162,9 @@ begin
                      else leaderboard.score end,
         created_at = case when excluded.time < leaderboard.time then now() else leaderboard.created_at end;
 end; $$;
-*/
+
+-- Откат (если enforcing что-то ломает): повторно выполнить транзитный submit_score
+-- из блока «ФАЗА 1» выше — он принимает и сабмиты без токена (p_runid опционален).
 
 
 -- ─────────────────────────── КАЛИБРОВКА пола времени ───────────────────────────
