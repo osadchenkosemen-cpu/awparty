@@ -136,7 +136,7 @@ const I18N = {
         node_descs: [
             ['Attack power +1', '+5% crit chance', 'Every 8th shot +1'],
             ['Max HP +10', 'Heal 10 HP over time', '-20% damage / lvl'],
-            ['Move speed +10', 'Unlock/upgrade dash', 'Pickup radius +50'],
+            ['Move speed +10', 'Upgrade dash', 'Pickup radius +50'],
         ],
 
         artifact_names: ['BLOOD PACT', 'GLASS CANNON', 'ECHO CHAMBER', 'SOUL LEECH', 'BERSERKER', 'IRON SKIN', 'MAGNET CORE'],
@@ -347,7 +347,7 @@ const I18N = {
         node_descs: [
             ['Сила атаки +1', '+5% к шансу крита', 'Каждый 8-й выстрел +1'],
             ['Макс. HP +10', 'Лечит 10 HP со временем', '-20% урона / LVL'],
-            ['Скорость +10', 'Открыть/улучшить рывок', 'Радиус подбора +50'],
+            ['Скорость +10', 'Улучшить рывок', 'Радиус подбора +50'],
         ],
 
         artifact_names: ['КРОВАВЫЙ ПАКТ', 'СТЕКЛЯННАЯ ПУШКА', 'ЭХО-КАМЕРА', 'ПОЖИРАТЕЛЬ ДУШ', 'БЕРСЕРК', 'ЖЕЛЕЗНАЯ КОЖА', 'МАГНИТНОЕ ЯДРО'],

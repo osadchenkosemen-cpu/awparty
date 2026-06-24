@@ -17,7 +17,7 @@ const SaveSystem = {
             permMaxHp: 100,
             permDamage: 1,
             permSpeed: 220,
-            permDashLevel: 0,
+            permDashLevel: 1,   // дэш доступен со старта (ур.1); в магазине только прокачка 2..5
             permCritChance: 0,
             permRegen: 0,
             permArmor: 0,
@@ -53,7 +53,7 @@ const SaveSystem = {
         b.permMaxHp = Math.round(numClamp(b.permMaxHp, 100, 170, 100));
         b.permDamage = numClamp(b.permDamage, 1, 10, 1);
         b.permSpeed = numClamp(b.permSpeed, 220, 270, 220);
-        b.permDashLevel = numClamp(b.permDashLevel, 0, 5, 0);
+        b.permDashLevel = numClamp(b.permDashLevel, 1, 5, 1);  // мин.1: старым сейвам с 0 даёт дэш
         b.permCritChance = numClamp(b.permCritChance, 0, 5, 0);
         b.permRegen = numClamp(b.permRegen, 0, 3, 0);
         b.permArmor = numClamp(b.permArmor, 0, 2, 0);
@@ -106,7 +106,7 @@ const SaveSystem = {
         data.permMaxHp = d.permMaxHp;
         data.permDamage = d.permDamage;
         data.permSpeed = d.permSpeed;
-        data.permDashLevel = 0;
+        data.permDashLevel = d.permDashLevel;  // дэш остаётся (ур.1), сбросом не отнимается
         data.permCritChance = 0;
         data.permRegen = 0;
         data.permArmor = 0;

@@ -69,7 +69,8 @@ class Shop {
     nodeUnlockReq(b, r) {
         switch (b * 3 + r) {
             case 1: return 3; case 2: return 2; case 4: return 3;
-            case 5: return 1; case 7: return 2; case 8: return 2;
+            case 5: return 1; case 8: return 2;
+            // case 7 (дэш) без гейта: доступен со старта (ур.1), узел — чистая прокачка
             default: return 0;
         }
     }
