@@ -171,6 +171,11 @@ end; $$;
 -- 4. Права: вызывать RPC может anon; тело выполняется с правами владельца (definer).
 grant execute on function public.submit_score(text, integer, numeric, text, integer) to anon;
 grant execute on function public.rename_player(text, text) to anon;
+
+-- Security Advisor hardening: снять дефолтный доступ у authenticated/PUBLIC (нужен
+-- только anon), иначе advisor ругается «Signed-In Users Can Execute SECURITY DEFINER».
+-- Для start_run/submit_score (актуальная 6-арг версия) — см. docs/runid_anticheat.sql.
+revoke execute on function public.rename_player(text, text) from public, authenticated;
 ```
 
 Самое важное против накрутки — пункты 1 (RLS, нет прямой записи) и 2 (потолок `score`,

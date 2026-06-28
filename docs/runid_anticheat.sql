@@ -116,6 +116,15 @@ end; $$;
 grant execute on function public.start_run(text, text, integer) to anon;
 grant execute on function public.submit_score(text, integer, numeric, text, integer, uuid) to anon;
 
+-- Security Advisor hardening: эти SECURITY DEFINER RPC должны быть вызываемы ТОЛЬКО
+-- анонимом (игра ходит под anon-ключом). Supabase по умолчанию грантит новые функции
+-- роли authenticated и PUBLIC — снимаем это, иначе advisor ругается «Signed-In Users /
+-- Public Can Execute SECURITY DEFINER». anon / owner / service_role не трогаем.
+-- (rename_player создаётся в SECURITY.md — там же снят его грант.)
+revoke execute on function public.start_run(text, text, integer) from public, authenticated;
+revoke execute on function public.submit_score(text, integer, numeric, text, integer, uuid) from public, authenticated;
+revoke execute on function public.rename_player(text, text) from public, authenticated;
+
 
 -- ─────────────────────────── ПРОВЕРКА Фазы 1 (по желанию) ───────────────────────────
 -- select public.start_run('test-cid', 'normal', 1);            -- вернёт uuid
