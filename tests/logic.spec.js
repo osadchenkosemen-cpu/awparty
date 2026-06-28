@@ -89,22 +89,50 @@ test('Shop: цена узла, гейтинг разблокировки, пок
         const s = SaveSystem.defaults();
         const sh = mk(s);
         const out = {};
-        out.dmgCost0 = sh.nodeCost(0, 0);              // 80 + cur*20, cur=permDamage-1=0
+        out.dmgCost0 = sh.nodeCost(0, 0);              // экспонента: base 1500, cur 0 → 1500
         out.critLockedAtStart = !sh.nodeUnlocked(0, 1); // крит закрыт, пока урон cur < 3
-        s.totalCoins = 1000;
-        out.buyOk = sh.purchaseSelected();             // купить урон (b0,r0)
+        s.totalCoins = 5000;
+        out.buyOk = sh.purchaseSelected();             // купить урон (b0,r0) за 1500
         out.dmgAfter = s.permDamage;
         out.coinsAfter = s.totalCoins;
         s.totalCoins = 0;
         out.buyBroke = sh.purchaseSelected();          // нет монет → false
         return out;
     });
-    expect(r.dmgCost0).toBe(80);
+    expect(r.dmgCost0).toBe(1500);
     expect(r.critLockedAtStart).toBe(true);
     expect(r.buyOk).toBe(true);
     expect(r.dmgAfter).toBe(2);      // 1 -> 2
-    expect(r.coinsAfter).toBe(920);  // 1000 - 80
+    expect(r.coinsAfter).toBe(3500); // 5000 - 1500
     expect(r.buyBroke).toBe(false);
+});
+
+test('roundCost округляет по диапазонам (50/100/500)', async ({ page }) => {
+    const r = await page.evaluate(() => ({
+        sub1k: roundCost(123),    // <1000 → к 50 → 100
+        mid: roundCost(1523),     // 1000..9999 → к 100 → 1500
+        big: roundCost(64424),    // >=10000 → к 500 → 64500
+        zero: roundCost(0),
+        neg: roundCost(-5),
+    }));
+    expect(r.sub1k).toBe(100);
+    expect(r.mid).toBe(1500);
+    expect(r.big).toBe(64500);
+    expect(r.zero).toBe(0);
+    expect(r.neg).toBe(0);
+});
+
+test('SaveSystem._migrate: одноразовый вайп монет старой экономики', async ({ page }) => {
+    const r = await page.evaluate(() => ({
+        oldWiped: SaveSystem._migrate({ totalCoins: 555 }).totalCoins,
+        oldVer: SaveSystem._migrate({ totalCoins: 555 }).economyVersion,
+        newKept: SaveSystem._migrate({ totalCoins: 7777, economyVersion: 1 }).totalCoins,
+        defaultsVer: SaveSystem.defaults().economyVersion,
+    }));
+    expect(r.oldWiped).toBe(0);
+    expect(r.oldVer).toBe(1);
+    expect(r.newKept).toBe(7777);
+    expect(r.defaultsVer).toBe(1);
 });
 
 test('EnemySpawner.spawnInterval: короче с этапом и в хардкоре', async ({ page }) => {
