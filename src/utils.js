@@ -41,6 +41,13 @@ function fmtNum(n) {
     return String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
+function roundCost(v) {
+    v = Math.max(0, Math.round(v || 0));
+    if (v < 1000) return Math.round(v / 50) * 50;
+    if (v < 10000) return Math.round(v / 100) * 100;
+    return Math.round(v / 500) * 500;
+}
+
 function lbCompare(a, b) {
     const aEmpty = !((a.time || 0) > 0 || (a.score || 0) > 0);
     const bEmpty = !((b.time || 0) > 0 || (b.score || 0) > 0);
