@@ -369,13 +369,16 @@ MainScene.prototype._runArtifacts = function() {
         }
         return out;
     }
-MainScene.prototype._buildIconRow = function(label, cx, y, entries) {
-        const ICON = 68, GAP = 18;
+MainScene.prototype._buildIconRow = function(label, cx, y, entries, opt) {
+        const ICON = (opt && opt.iconSize) || 68;
+        const GAP = (opt && opt.gap) || 18;
+        const LABEL_GAP = (opt && opt.labelGap) || 34;
+        const TRAIL = (opt && opt.trail) || 20;
         this._mText(cx, y, label, 24, '#9a96b0', 0.5, 0, '#000', 2);
-        const iconY = y + 34;
+        const iconY = y + LABEL_GAP;
         if (!entries.length) {
             this._mText(cx, iconY + ICON / 2, t('build_none'), 30, '#6a6680', 0.5, 0.5);
-            return iconY + ICON + 20;
+            return iconY + ICON + TRAIL;
         }
         const total = entries.length * ICON + (entries.length - 1) * GAP;
         let sx = cx - total / 2;
@@ -390,7 +393,7 @@ MainScene.prototype._buildIconRow = function(label, cx, y, entries) {
             if (e.badge) this._mText(sx + ICON + 2, iconY + ICON + 2, e.badge, 24, '#ffd200', 1, 1, '#321900', 3);
             sx += ICON + GAP;
         }
-        return iconY + ICON + 20;
+        return iconY + ICON + TRAIL;
     }
 
 MainScene.prototype._buildPause = function() {
@@ -520,13 +523,19 @@ MainScene.prototype._buildStageClear = function() {
         this._mText(colX[3], y, '' + tot.kills, 42, '#ffffff', 0.5, 0.5, '#000', 2);
         this._mText(colX[4], y, '' + tot.coins, 42, '#ffd700', 0.5, 0.5, '#3a2a00', 2);
 
-        this._mText(W / 2, y + 70, t('pause_build'), 28, '#00ffc8', 0.5, 0, '#000', 2);
-        let by = y + 112;
-        by = this._buildIconRow(t('build_cards'), W / 2, by, this._runCards());
-        by = this._buildIconRow(t('build_abilities'), W / 2, by, this._runAbilities());
-        by = this._buildIconRow(t('build_artifacts'), W / 2, by, this._runArtifacts());
+        // Компактные ряды билда: экран клира плотнее экрана смерти (сверху таблица из
+        // 3 этапов), поэтому ужимаем иконки, чтобы билд + баннер достижений влезли над
+        // кнопкой «В ХАБ» (её верх на y = H-150 = 930).
+        const buildOpt = { iconSize: 56, labelGap: 28, trail: 14, gap: 16 };
+        this._mText(W / 2, y + 56, t('pause_build'), 28, '#00ffc8', 0.5, 0, '#000', 2);
+        let by = y + 88;
+        by = this._buildIconRow(t('build_cards'), W / 2, by, this._runCards(), buildOpt);
+        by = this._buildIconRow(t('build_abilities'), W / 2, by, this._runAbilities(), buildOpt);
+        by = this._buildIconRow(t('build_artifacts'), W / 2, by, this._runArtifacts(), buildOpt);
 
-        this._buildUnlockBanner(W / 2, H - 250);
+        // Баннер достижений течёт ПОД билдом (как на экране смерти), а не в фикс-позиции —
+        // иначе при 3 непустых рядах билда он перекрывал ряд артефактов.
+        this._buildUnlockBanner(W / 2, by + 8);
 
         const r = this._stageClearHubRect();
         this._mAdd(this.add.rectangle(r.x + r.w / 2, r.y + r.h / 2, r.w, r.h, 0x14003c, 1)
