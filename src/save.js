@@ -26,6 +26,9 @@ const SaveSystem = {
             permArtifacts: 0,
             permActiveArtifacts: 0,
             maxChapterUnlocked: 1,
+            achUnlocked: [],
+            lifetimeKills: 0,
+            lifetimeRuns: 0,
         };
     },
 
@@ -72,6 +75,11 @@ const SaveSystem = {
                 else activeCnt++;
             }
         }
+
+        b.achUnlocked = Array.isArray(b.achUnlocked) ? b.achUnlocked.filter((x) => typeof x === 'string') : [];
+        b.achUnlocked = b.achUnlocked.filter((x, i) => b.achUnlocked.indexOf(x) === i); // дедуп
+        b.lifetimeKills = Math.floor(numClamp(b.lifetimeKills, 0, 1e12, 0));
+        b.lifetimeRuns = Math.floor(numClamp(b.lifetimeRuns, 0, 1e9, 0));
         return b;
     },
 
@@ -96,6 +104,9 @@ const SaveSystem = {
             permArtifacts: data.permArtifacts,
             permActiveArtifacts: data.permActiveArtifacts,
             maxChapterUnlocked: data.maxChapterUnlocked,
+            achUnlocked: data.achUnlocked,
+            lifetimeKills: data.lifetimeKills,
+            lifetimeRuns: data.lifetimeRuns,
         };
         try { localStorage.setItem(SAVE_KEY, JSON.stringify(blob)); } catch (e) {}
     },
@@ -122,6 +133,7 @@ const SaveSystem = {
         'totalCoins', 'permMaxHp', 'permDamage', 'permSpeed', 'permDashLevel',
         'permCritChance', 'permRegen', 'permArmor', 'permMagnet', 'permMultishot',
         'permArtifacts', 'permActiveArtifacts', 'maxChapterUnlocked',
+        'achUnlocked', 'lifetimeKills', 'lifetimeRuns',
     ],
 
     cloudBlob(data) {
@@ -132,8 +144,18 @@ const SaveSystem = {
 
     applyCloudMeta(data, blob) {
         if (!blob || typeof blob !== 'object') return false;
+        // Локальные значения ачивок/счётчиков — для слияния (не перезаписи).
+        const localAch = Array.isArray(data.achUnlocked) ? data.achUnlocked.slice() : [];
+        const localKills = Number.isFinite(data.lifetimeKills) ? data.lifetimeKills : 0;
+        const localRuns = Number.isFinite(data.lifetimeRuns) ? data.lifetimeRuns : 0;
         const tmp = Object.assign(this.defaults(), data);
         for (const f of this.META_FIELDS) if (blob[f] !== undefined) tmp[f] = blob[f];
+        // Ачивки/счётчики синкаются слиянием, чтобы не терять прогресс между устройствами:
+        // achUnlocked = объединение, счётчики = max. Дедуп массива делает _validate.
+        const cloudAch = Array.isArray(blob.achUnlocked) ? blob.achUnlocked : [];
+        tmp.achUnlocked = localAch.concat(cloudAch);
+        tmp.lifetimeKills = Math.max(localKills, Number.isFinite(blob.lifetimeKills) ? blob.lifetimeKills : 0);
+        tmp.lifetimeRuns = Math.max(localRuns, Number.isFinite(blob.lifetimeRuns) ? blob.lifetimeRuns : 0);
         const validated = this._validate(tmp);
         for (const f of this.META_FIELDS) data[f] = validated[f];
         return true;

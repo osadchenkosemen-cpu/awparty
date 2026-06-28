@@ -122,3 +122,41 @@ test('EnemySpawner.spawnInterval: короче с этапом и в хардк�
     expect(r.s3).toBeLessThan(r.s2);
     expect(r.s1hc).toBeLessThan(r.s1);
 });
+
+test('SaveSystem: поля достижений — дефолты и валидация', async ({ page }) => {
+    const r = await page.evaluate(() => {
+        const v = (obj) => SaveSystem._validate(Object.assign(SaveSystem.defaults(), obj));
+        const d = SaveSystem.defaults();
+        return {
+            defAch: Array.isArray(d.achUnlocked) && d.achUnlocked.length === 0,
+            defKills: d.lifetimeKills,
+            defRuns: d.lifetimeRuns,
+            badAch: JSON.stringify(v({ achUnlocked: 'nope' }).achUnlocked),
+            dedup: JSON.stringify(v({ achUnlocked: ['a', 'a', 'b', 5] }).achUnlocked),
+            killsNeg: v({ lifetimeKills: -10 }).lifetimeKills,
+            killsFloor: v({ lifetimeKills: 12.9 }).lifetimeKills,
+        };
+    });
+    expect(r.defAch).toBe(true);
+    expect(r.defKills).toBe(0);
+    expect(r.defRuns).toBe(0);
+    expect(r.badAch).toBe('[]');
+    expect(r.dedup).toBe('["a","b"]');
+    expect(r.killsNeg).toBe(0);
+    expect(r.killsFloor).toBe(12);
+});
+
+test('SaveSystem.applyCloudMeta: слияние достижений (union/max)', async ({ page }) => {
+    const r = await page.evaluate(() => {
+        const data = Object.assign(SaveSystem.defaults(), { achUnlocked: ['a', 'b'], lifetimeKills: 500, lifetimeRuns: 10 });
+        SaveSystem.applyCloudMeta(data, { achUnlocked: ['b', 'c'], lifetimeKills: 300, lifetimeRuns: 40 });
+        return {
+            ach: JSON.stringify(data.achUnlocked.slice().sort()),
+            kills: data.lifetimeKills,
+            runs: data.lifetimeRuns,
+        };
+    });
+    expect(r.ach).toBe('["a","b","c"]');
+    expect(r.kills).toBe(500); // max(500, 300)
+    expect(r.runs).toBe(40);   // max(10, 40)
+});
