@@ -1149,6 +1149,11 @@ class MainScene extends Phaser.Scene {
         } else if (this.gamePhase === GamePhase.PHASE_3 && bossImminent(this.phase3Timer, 3, this.phase3BossSpawned)) {
             warning = true; warnCol = '#00e6ff';
         }
+        // После финального босса (crazyMode, до входа в портал) боссов больше нет —
+        // предупреждение «Attention» должно быть выключено во всех главах. Без этого в
+        // гл.3 ветка PHASE_3 ложно горела (там phase3BossSpawned не выставляется, а
+        // phaseKills в crazyMode огромный), и варн висел до портала.
+        if (this.crazyMode) warning = false;
         this.warnRect.setVisible(false);
         if (warning) {
             const pulse = 0.65 + 0.35 * Math.abs(Math.sin(this.globalTime * 6));
