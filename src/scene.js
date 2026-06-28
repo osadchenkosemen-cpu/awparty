@@ -741,7 +741,7 @@ class MainScene extends Phaser.Scene {
         }
         this._filterRelease(this.gems, 'gem', g => g.isCollected);
 
-        const coinReward = s.isHardcoreMode ? C.HARDCORE_COIN_MULT : 1;
+        const coinReward = C.COIN_VALUE * (this.chapter.coinMult || 1) * (s.isHardcoreMode ? C.HARDCORE_COIN_MULT : 1);
         for (const c of this.coins) {
             c.update(dt, px, py, p.pickupRadius);
             if (distSq(c.sprite.x, c.sprite.y, px, py) < C.COLLISION.COIN_PICKUP_SQ) {
@@ -859,7 +859,7 @@ class MainScene extends Phaser.Scene {
             }
         }
         this._bossExists = bossExists;
-        this.hud.update(p, s.totalCoins, bossExists, bossHpPct, formatTime(this.survivalTimer),
+        this.hud.update(p, this.coinsThisRun, bossExists, bossHpPct, formatTime(this.survivalTimer),
             this.runUpgradeLevels, this.equippedAbilities, this.abilityCooldowns, this.abilityMaxCooldowns);
 
         this.drawWorldFx();

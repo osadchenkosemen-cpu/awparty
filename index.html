@@ -143,7 +143,7 @@
          script.async = false сохраняет порядок выполнения вставленных скриптов. -->
     <script>
         (function () {
-            var ASSET_VER = '250'; // ← единственное место для бампа версии модулей
+            var ASSET_VER = '251'; // ← единственное место для бампа версии модулей
             window.ASSET_VER = ASSET_VER; // авто-апдейтер (src/updater.js) сверяет её со свежим index.html
             // Порядок важен: entities.js объявляет DEG + Player, затем entities_enemy/
             // entities_projectiles/entities_pickups (используют DEG и глобалы) — ВСЕ до spawner
